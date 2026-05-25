@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>East Village — NYT Walking Tour</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f0e0a;
+    --paper: #f5f0e8;
+    --aged: #e8e0cc;
+    --rust: #b5431a;
+    --rust-light: #d4582a;
+    --slate: #4a5568;
+    --muted: #8a7f6e;
+    --accent: #1a3a5c;
+    --green: #2d5a27;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRAIN OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* MASTHEAD */
+  .masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 16px 20px 12px;
+    text-align: center;
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .masthead-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .masthead-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+
+  .masthead-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 5px;
+    border-top: 1px solid var(--aged);
+    padding-top: 5px;
+  }
+
+  /* PROGRESS BAR */
+  .progress-track {
+    height: 3px;
+    background: var(--aged);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--rust);
+    transition: width 0.5s ease;
+  }
+
+  /* STOP COUNTER */
+  .stop-counter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--aged);
+    background: var(--paper);
+  }
+
+  .stop-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--aged);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--muted);
+  }
+
+  .dot.active { background: var(--rust); border-color: var(--rust); transform: scale(1.3); }
+  .dot.visited { background: var(--slate); border-color: var(--slate); }
+
+  /* MAIN CONTENT */
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 0 120px;
+  }
+
+  /* STOP CARD */
+  .stop-card {
+    display: none;
+    animation: fadeSlide 0.4s ease;
+  }
+
+  .stop-card.active { display: block; }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stop-header {
+    padding: 20px 20px 0;
+    border-bottom: 1px solid var(--aged);
+    margin-bottom: 0;
+  }
+
+  .stop-number-line {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .stop-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--aged);
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-right: 4px;
+  }
+
+  .stop-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .stop-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(20px, 4.5vw, 28px);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  .stop-address {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--rust);
+    padding-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stop-address::before {
+    content: '◆';
+    font-size: 7px;
+  }
+
+  /* AUDIO PLAYER */
+  .audio-section {
+    margin: 0 20px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--aged);
+  }
+
+  .audio-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .audio-player-custom {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 16px;
+    border-radius: 2px;
+  }
+
+  .play-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--rust);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 1px;
+    transition: background 0.2s;
+  }
+
+  .play-btn:hover { background: var(--rust-light); }
+
+  .audio-timeline {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .timeline-bar {
+    width: 100%;
+    height: 3px;
+    background: #333;
+    cursor: pointer;
+    position: relative;
+    border-radius: 2px;
+  }
+
+  .timeline-fill {
+    height: 100%;
+    background: var(--rust);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+    pointer-events: none;
+  }
+
+  .time-display {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .audio-note {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* NARRATIVE */
+  .narrative-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--aged);
+  }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--aged);
+  }
+
+  .narrative-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--ink);
+  }
+
+  .narrative-text p + p { margin-top: 12px; }
+
+  .pull-quote {
+    border-left: 3px solid var(--rust);
+    padding: 8px 16px;
+    margin: 16px 0;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 17px;
+    color: var(--accent);
+    line-height: 1.6;
+  }
+
+  /* TAGS */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .tag {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid currentColor;
+    border-radius: 1px;
+  }
+
+  .tag-history { color: var(--accent); }
+  .tag-culture { color: var(--rust); }
+  .tag-music { color: var(--green); }
+  .tag-politics { color: var(--slate); }
+  .tag-architecture { color: var(--muted); }
+
+  /* MAP EMBED */
+  .map-section {
+    margin: 0 20px 0;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--aged);
+  }
+
+  .map-frame {
+    width: 100%;
+    height: 200px;
+    border: none;
+    border-radius: 2px;
+    filter: sepia(20%) contrast(95%);
+  }
+
+  /* WHAT TO LOOK FOR */
+  .lookfor-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--aged);
+    background: var(--aged);
+  }
+
+  .lookfor-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .lookfor-items li {
+    font-size: 13px;
+    line-height: 1.5;
+    padding-left: 16px;
+    position: relative;
+    color: var(--ink);
+  }
+
+  .lookfor-items li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--rust);
+    font-size: 11px;
+  }
+
+  /* THEN & NOW */
+  .then-now {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--aged);
+  }
+
+  .then-now-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .then-col, .now-col {
+    padding: 12px;
+    border-radius: 2px;
+  }
+
+  .then-col {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .now-col {
+    background: var(--rust);
+    color: white;
+  }
+
+  .then-now-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+
+  .then-now-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* NAVIGATION */
+  .nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    gap: 12px;
+    z-index: 200;
+    border-top: 2px solid var(--rust);
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid var(--muted);
+    color: var(--paper);
+    padding: 10px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 1px;
+    white-space: nowrap;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    background: var(--rust);
+    border-color: var(--rust);
+    color: white;
+  }
+
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+  .nav-center {
+    text-align: center;
+    flex: 1;
+  }
+
+  .nav-stop-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .nav-stop-pos {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* OVERVIEW / TOC */
+  .toc-view {
+    display: none;
+    padding: 20px;
+  }
+
+  .toc-view.active { display: block; }
+
+  .toc-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .toc-intro {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--slate);
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--aged);
+    padding-bottom: 16px;
+  }
+
+  .toc-list { list-style: none; }
+
+  .toc-item {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--aged);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .toc-item:hover .toc-item-title { color: var(--rust); }
+
+  .toc-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--aged);
+    font-weight: 700;
+    min-width: 28px;
+    line-height: 1;
+  }
+
+  .toc-item-info { flex: 1; }
+
+  .toc-item-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    transition: color 0.2s;
+  }
+
+  .toc-item-addr {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-top: 2px;
+  }
+
+  .toc-dur {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .toc-visited-badge {
+    font-size: 8px;
+    letter-spacing: 2px;
+    padding: 2px 6px;
+    background: var(--slate);
+    color: white;
+    text-transform: uppercase;
+  }
+
+  /* TOGGLE TOC */
+  .toc-toggle {
+    background: none;
+    border: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
+
+  .toc-toggle:hover { color: var(--rust); }
+
+  /* RESPONSIVE */
+  @media (max-width: 480px) {
+    .then-now-grid { grid-template-columns: 1fr; }
+    .stop-num { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-eyebrow">The New York Times · Neighborhood Audio Tour</div>
+  <div class="masthead-title">East Village</div>
+  <div class="masthead-sub">
+    <button class="toc-toggle" onclick="toggleTOC()">Tour Map &amp; All Stops</button>
+    &nbsp;·&nbsp; 12 Stops &nbsp;·&nbsp; ~2 Hours
+  </div>
+</div>
+
+<div class="progress-track">
+  <div class="progress-fill" id="progressFill"></div>
+</div>
+
+<div class="stop-counter">
+  <span id="stopCountLabel">Stop 1 of 12</span>
+  <div class="stop-dots" id="stopDots"></div>
+</div>
+
+<div class="main" id="mainContent">
+
+  <!-- TOC VIEW -->
+  <div class="toc-view" id="tocView">
+    <div class="toc-title">All Stops</div>
+    <p class="toc-intro">This New York Times audio tour covers the East Village — one of Manhattan's most historically dense neighborhoods, shaped by immigrant waves, radical politics, punk rock, and relentless gentrification. The original tour was recorded in 2007. Notes below reflect what's changed.</p>
+    <ul class="toc-list" id="tocList"></ul>
+  </div>
+
+  <!-- STOP CARDS dynamically inserted -->
+  <div id="stopsContainer"></div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">← Prev</button>
+  <div class="nav-center">
+    <div class="nav-stop-name" id="navStopName"></div>
+    <div class="nav-stop-pos" id="navStopPos"></div>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">Next →</button>
+</div>
+
+<script>
+const STOPS = [
+  {
+    num: 1,
+    title: "Introduction: East Village",
+    address: "Starting Point — Astor Place / St. Marks",
+    duration: 82,
+    tags: ["history", "culture"],
+    narrative: `<p>Welcome to the East Village — or what used to be the Lower East Side before the neighborhood rebranded itself sometime in the 1960s. The name change itself tells you something about the place: always reinventing, always contested.</p>
+    <p>The East Village is bounded roughly by 14th Street to the north, Houston to the south, Third Avenue to the west, and Avenue D to the east. It has been, at various times, home to waves of German, Irish, Jewish, Ukrainian, and Puerto Rican immigrants — and then the poets, punks, junkies, artists, and anarchists who came for the cheap rent.</p>`,
+    pullQuote: "The East Village has always been the place where New York goes to reinvent itself.",
+    lookFor: [
+      "The Astor Place Cube — technically called 'Alamo,' it still spins",
+      "Signs of the Cooper Union building, where Lincoln gave his famous speech in 1860",
+      "The mix of residential tenements and converted storefronts along 8th Street"
+    ],
+    thenNow: {
+      then: "In 2007, rents were rising but the neighborhood still had pockets of its old bohemian identity. CBGB had just closed (Oct 2006).",
+      now: "The East Village is now among the most expensive rental markets in NYC. The dive bars and cheap eats have been steadily replaced, but the bones of the old neighborhood remain."
+    },
+    mapQuery: "Astor Place New York City",
+    mapCoords: "40.7295,-73.9918"
+  },
+  {
+    num: 2,
+    title: "8th Street & Avenue A",
+    address: "E 8th St & Ave A",
+    duration: 235,
+    tags: ["culture", "history", "music"],
+    narrative: `<p>Avenue A and 8th Street sits at the western edge of Tompkins Square Park, one of the great flashpoint locations in New York City history. The park has seen labor riots in 1874, the 1988 police riot during the crack epidemic, and waves of hippies, punks, and homeless encampments.</p>
+    <p>The streets around here in the 1970s and 80s were genuinely dangerous — part of what made the neighborhood a magnet for artists who couldn't afford anything else. That danger is largely gone now, replaced by brunch spots and dog walkers.</p>`,
+    pullQuote: "Tompkins Square Park was where the neighborhood fought — against landlords, against the police, against displacement.",
+    lookFor: [
+      "The park's eastern edge — where the tent city stood during the 1988 riots",
+      "The bandshell (now demolished) where countless punk and hardcore shows happened",
+      "The dog run, which replaced the area where houseless residents once camped"
+    ],
+    thenNow: {
+      then: "The park had recently been cleaned up after the 1988 riots and subsequent encampment clearings. Drug dealing was still visible on the surrounding blocks.",
+      now: "Fully gentrified park with a well-maintained dog run. The surrounding blocks have some of Manhattan's most expensive rental buildings."
+    },
+    mapQuery: "Tompkins Square Park East Village",
+    mapCoords: "40.7264,-73.9815"
+  },
+  {
+    num: 3,
+    title: "Tompkins Square Park Center",
+    address: "Tompkins Square Park, E 10th St",
+    duration: 99,
+    tags: ["history", "politics"],
+    narrative: `<p>Stand in the center of Tompkins Square Park and you're standing in what was once one of the most contested public spaces in New York City. The 1988 riot here — when police clashed violently with protestors, squatters, and residents resisting a curfew — became a defining moment in the story of East Village gentrification.</p>
+    <p>The park has a bandshell that hosted everything from the Grateful Dead to hardcore matinees. It was demolished after the riots. What's here now is manicured, placid, and tells you almost nothing about what happened here.</p>`,
+    pullQuote: "The 1988 riot wasn't about the park. It was about who the city was for.",
+    lookFor: [
+      "The elm trees — some are over 100 years old and predate the riots by generations",
+      "The chess tables on the south side, which have been there for decades",
+      "Plaques and memorials along the pathways"
+    ],
+    thenNow: {
+      then: "The park was a focal point of neighborhood tensions — squatters, activists, and artists vs. developers and the city.",
+      now: "A well-maintained neighborhood park. The political energy has dissipated, though it occasionally reactivates around housing and displacement issues."
+    },
+    mapQuery: "Tompkins Square Park center Manhattan",
+    mapCoords: "40.7264,-73.9815"
+  },
+  {
+    num: 4,
+    title: "The Christodora House",
+    address: "143 Avenue B at E 9th St",
+    duration: 167,
+    tags: ["architecture", "history", "politics"],
+    narrative: `<p>The Christodora House is one of the most despised buildings in East Village history — and one of the most architecturally beautiful. Built in 1928 as a settlement house for immigrants, it later became a cultural center, then was abandoned, then converted to luxury condos in 1986.</p>
+    <p>That conversion made it a symbol of everything the neighborhood feared about gentrification. During the 1988 riots, a mob smashed its lobby windows and spray-painted "Die Yuppie Scum" on the facade — a phrase that became the battle cry of the era.</p>`,
+    pullQuote: "Die Yuppie Scum. The spray paint is gone but the condos are still there.",
+    lookFor: [
+      "The building's impressive height — 16 stories, designed to be seen across the park",
+      "The arched entrance, original from the 1928 construction",
+      "The contrast between this building and the surrounding tenements"
+    ],
+    thenNow: {
+      then: "Still remembered as a flashpoint. Units were selling for what felt like shocking prices — $300-400K.",
+      now: "Units now sell for $2M+. The building is fully normalized into the neighborhood's luxury fabric."
+    },
+    mapQuery: "Christodora House Avenue B New York",
+    mapCoords: "40.7259,-73.9785"
+  },
+  {
+    num: 5,
+    title: "Avenue B & 8th Street",
+    address: "Ave B & E 8th St",
+    duration: 70,
+    tags: ["culture", "history"],
+    narrative: `<p>This corner sits in the heart of what was once called "Alphabet City" — the avenues A through D that make up the eastern edge of the East Village. In the 1980s, this area was among the most dangerous in Manhattan, ground zero for the crack epidemic.</p>
+    <p>The Puerto Rican community that dominated these blocks from the 1950s onward built a rich cultural life here despite the poverty and neglect — bodegas, social clubs, community gardens, and Nuyorican poetry that would eventually become a nationally recognized literary movement.</p>`,
+    pullQuote: "Alphabet City was where New York hid what it didn't want to deal with.",
+    lookFor: [
+      "Community gardens on many side streets — some of the oldest in NYC",
+      "Remnants of old signage in Spanish on storefronts",
+      "The mix of tenement architecture from the late 1800s"
+    ],
+    thenNow: {
+      then: "Still transitional — bodegas and old-school Puerto Rican businesses alongside new bars and restaurants.",
+      now: "Almost fully gentrified. A few legacy businesses remain but the demographic shift is largely complete."
+    },
+    mapQuery: "Avenue B 8th Street East Village New York",
+    mapCoords: "40.7258,-73.9793"
+  },
+  {
+    num: 6,
+    title: "Avenue C & 9th Street",
+    address: "Ave C & E 9th St",
+    duration: 156,
+    tags: ["culture", "history", "politics"],
+    narrative: `<p>Avenue C in the early 1980s was essentially abandoned by the city — landlords were burning buildings for insurance money, families were doubling up in overcrowded apartments, and the drug trade had made walking certain blocks genuinely hazardous.</p>
+    <p>Into that vacuum came squatters — artists, anarchists, and activists who occupied vacant buildings and created something like a parallel city. Many of these buildings were later legalized; others were cleared by the city. The Umbrella House on Avenue C is one of the few surviving sweat-equity squatter buildings that made it through.</p>`,
+    pullQuote: "The squatters didn't just want shelter. They wanted to prove the city had abandoned its own people.",
+    lookFor: [
+      "The Umbrella House (Ave C near 9th) — a surviving sweat-equity squat turned co-op",
+      "La Plaza Cultural garden, one of the iconic community gardens",
+      "The overall scale of the blocks — how far east feels from the subway"
+    ],
+    thenNow: {
+      then: "The squatter movement was winding down. The city had won most of the battles but some buildings had been legalized.",
+      now: "New development has crept even to Avenue C and D. Rents are high even here."
+    },
+    mapQuery: "Avenue C 9th Street Manhattan",
+    mapCoords: "40.7248,-73.9761"
+  },
+  {
+    num: 7,
+    title: "Avenue C & 9th Street (Continued)",
+    address: "Ave C & E 9th St — East",
+    duration: 78,
+    tags: ["culture", "history"],
+    narrative: `<p>Continuing along Avenue C, note the community gardens that dot this stretch. These gardens were created in the 1970s and 80s on lots that the city had essentially written off. Residents cleared rubble, built raised beds, and created green spaces that became anchors of community life.</p>
+    <p>The city tried to sell some of these lots for development in the late 1990s, leading to fierce battles. Ultimately a deal was brokered that preserved most of the gardens, now managed through various land trusts and the Parks Department.</p>`,
+    pullQuote: "The gardens were an act of political defiance that became community infrastructure.",
+    lookFor: [
+      "Signage on the garden fences showing founding dates — most are early 1980s",
+      "The variety of garden styles — some formal, some wild and improvisational",
+      "The 6BC Botanical Garden on 6th St near Ave B"
+    ],
+    thenNow: {
+      then: "Gardens were secure after the late-90s battles but still felt like contested territory.",
+      now: "Gardens are now a celebrated feature of the neighborhood and protected by agreements with the Parks Department."
+    },
+    mapQuery: "La Plaza Cultural community garden Avenue C New York",
+    mapCoords: "40.7243,-73.9757"
+  },
+  {
+    num: 8,
+    title: "6th Street & Avenue B",
+    address: "E 6th St & Ave B",
+    duration: 116,
+    tags: ["culture", "history", "music"],
+    narrative: `<p>The block of 6th Street between First and Second Avenues was once lined with Indian restaurants — a dense cluster of curry houses that made it a New York institution. Most are gone now, but for decades "Indian Row" was where you went for cheap, decent food in a neighborhood that prided itself on affordability.</p>
+    <p>This stretch of the East Village, below 10th Street and between the Avenues, is where much of the neighborhood's social life concentrated — cheap bars, underground music venues, community centers.</p>`,
+    pullQuote: "The East Village was a place you could afford to be broke in. That's what made it possible.",
+    lookFor: [
+      "The remaining Indian restaurants — a few still hang on",
+      "The row houses and tenements along 6th Street",
+      "The fire escapes — an architectural signature of this neighborhood"
+    ],
+    thenNow: {
+      then: "Indian Row was still going strong, a reliable cheap-eats option for the neighborhood.",
+      now: "Most of the Indian restaurants have closed. Rents made the low-margin model impossible."
+    },
+    mapQuery: "6th Street Avenue B East Village New York",
+    mapCoords: "40.7243,-73.9810"
+  },
+  {
+    num: 9,
+    title: "6th Street — 1st to 2nd Ave",
+    address: "E 6th St between 1st & 2nd Ave",
+    duration: 121,
+    tags: ["culture", "history", "architecture"],
+    narrative: `<p>Walking west on 6th Street, you're moving through the older, more residential heart of the neighborhood. The tenement buildings here were built in the 1880s and 1890s to house the waves of Eastern European Jewish immigrants who poured into this area.</p>
+    <p>Many of these buildings housed families of eight or more in apartments of two or three rooms, with shared bathrooms in the hallway and no central heat. The physical structures remain; the lives lived in them are almost impossible to reconstruct.</p>`,
+    pullQuote: "The tenements were meant to be temporary. They turned out to be permanent.",
+    lookFor: [
+      "The characteristic narrow lots and five-story walk-up profile",
+      "Carved stone lintels above doorways with dates from the 1890s",
+      "The way buildings share party walls — a continuous urban fabric"
+    ],
+    thenNow: {
+      then: "Many of these buildings were still rent-stabilized, housing long-term tenants alongside newcomers.",
+      now: "Ongoing battles over rent stabilization and buyouts. Some buildings fully market-rate; others still mixed."
+    },
+    mapQuery: "East 6th Street between 1st 2nd Avenue Manhattan",
+    mapCoords: "40.7238,-73.9843"
+  },
+  {
+    num: 10,
+    title: "2nd Avenue — 8th to 9th St",
+    address: "2nd Ave between E 8th & E 9th St",
+    duration: 81,
+    tags: ["culture", "history"],
+    narrative: `<p>Second Avenue was once known as the "Yiddish Broadway" — a strip of Yiddish-language theaters that served the massive Jewish immigrant population of the Lower East Side and East Village. At its peak in the early 20th century, this was one of the great theatrical districts in the country.</p>
+    <p>The theaters are gone. A few plaques remain. The Second Avenue Deli, which anchored this identity, relocated to Midtown. What's left is mostly the bones of a former cultural world, legible only if you know where to look.</p>`,
+    pullQuote: "Yiddish Broadway was one of the great American theatrical traditions. Almost no one remembers it now.",
+    lookFor: [
+      "Stars on the sidewalk — a Yiddish Theater Walk of Fame along 2nd Ave",
+      "The former theater facades that are now restaurants or banks",
+      "The landmarked buildings that preserve the early 20th century streetscape"
+    ],
+    thenNow: {
+      then: "The Second Avenue Deli was still here on 10th Street — it closed in 2006, one year before this tour was recorded.",
+      now: "The deli reopened in Midtown (33rd St). The 2nd Ave stretch has been largely redeveloped."
+    },
+    mapQuery: "Second Avenue 8th Street East Village Yiddish Theater",
+    mapCoords: "40.7285,-73.9876"
+  },
+  {
+    num: 11,
+    title: "St. Mark's Place",
+    address: "E 8th St (St. Mark's Pl) — 2nd to 3rd Ave",
+    duration: 198,
+    tags: ["culture", "music", "history"],
+    narrative: `<p>St. Mark's Place — officially East 8th Street — is the neighborhood's main artery and one of the most mythologized blocks in American counterculture. W.H. Auden lived here. Trotsky had an office nearby. Andy Warhol's Electric Circus was here. The Ramones played nearby. The Sex Pistols' American tour promoter operated out of here.</p>
+    <p>In its peak years through the 70s and 80s, St. Mark's was where the underground surfaced: record stores, head shops, radical bookstores, punk venues, cheap ethnic food. The physical block remains but the cultural function has largely evaporated.</p>
+    <p>The Gem Spa newsstand at the corner of St. Mark's and 2nd Ave — famous for its egg creams and its appearance on countless album covers — closed in 2020.</p>`,
+    pullQuote: "St. Mark's Place was the address of American bohemia for two generations. Then the rents went up.",
+    lookFor: [
+      "The building at 96 St. Mark's (once home to Auden and earlier Leon Trotsky)",
+      "The remaining tattoo and piercing shops — holdovers from the 80s-90s era",
+      "The corner at 2nd Ave where Gem Spa stood"
+    ],
+    thenNow: {
+      then: "St. Mark's in 2007 was already a shadow of its former self but still had record shops, the Gem Spa, and some genuine grit.",
+      now: "Gem Spa is closed. Most of the independent shops are gone. The block is now largely restaurants and tourist-facing retail. The myth outpaces the reality considerably."
+    },
+    mapQuery: "St Marks Place East Village New York",
+    mapCoords: "40.7272,-73.9874"
+  },
+  {
+    num: 12,
+    title: "315 Bowery — CBGB",
+    address: "315 Bowery at Bleecker St",
+    duration: 117,
+    tags: ["music", "culture", "history"],
+    narrative: `<p>315 Bowery is where CBGB stood — the club that launched American punk and new wave. From 1973 until it closed in October 2006, CBGB hosted the Ramones, Television, Patti Smith, Blondie, Talking Heads, Bad Brains, Sonic Youth, and virtually every significant underground band of the era.</p>
+    <p>The owner Hilly Kristal tried to fight the landlord who raised his rent but ultimately lost. He died in 2007, the year this tour was recorded, just months after the club closed. The space became a John Varvatos boutique — a luxury clothing store — which felt to many like the perfect symbol of everything that had happened to the neighborhood.</p>
+    <p>This is where the tour ends. From here, you can see the Bowery as it was — a skid row of flophouses and missions — and as it's becoming: boutique hotels and high-end retail on one of Manhattan's last frontier streets.</p>`,
+    pullQuote: "CBGB closed on October 15, 2006. Patti Smith played the last show. She sang 'Elegie' for the room.",
+    lookFor: [
+      "315 Bowery — the awning is still there; look for the ghost of the CBGB sign",
+      "The John Varvatos store interior still preserves some original club elements",
+      "The Bowery Hotel across the street — once a flophouse strip",
+      "The remaining missions and shelters — the Bowery's older identity persisting"
+    ],
+    thenNow: {
+      then: "CBGB had literally just closed — the wound was fresh. The neighborhood was in mourning.",
+      now: "CBGB is mythology now. John Varvatos closed too (2020). The space is now something else. The Bowery is luxury real estate."
+    },
+    mapQuery: "CBGB 315 Bowery New York",
+    mapCoords: "40.7248,-73.9929"
+  }
+];
+
+let currentStop = 0;
+let tocVisible = false;
+const visited = new Set();
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+function tagClass(t) {
+  return `tag tag-${t}`;
+}
+
+function buildStopCard(stop) {
+  const mapSrc = `https://maps.google.com/maps?q=${stop.mapCoords}&z=17&output=embed`;
+  const tagsHtml = stop.tags.map(t => `<span class="${tagClass(t)}">${t}</span>`).join('');
+
+  return `
+  <div class="stop-card" id="stop-${stop.num}">
+    <div class="stop-header">
+      <div class="stop-number-line">
+        <span class="stop-num">${String(stop.num).padStart(2,'0')}</span>
+        <span class="stop-label">Stop · ${formatTime(stop.duration)} audio</span>
+      </div>
+      <div class="stop-title">${stop.title}</div>
+      <div class="stop-address">${stop.address}</div>
+    </div>
+
+    <div class="audio-section">
+      <div class="audio-label">Original NYT Audio · 2007</div>
+      <div class="audio-player-custom">
+        <button class="play-btn" id="playBtn-${stop.num}" onclick="togglePlay(${stop.num})">▶</button>
+        <div class="audio-timeline">
+          <div class="timeline-bar" id="bar-${stop.num}" onclick="seekAudio(event, ${stop.num})">
+            <div class="timeline-fill" id="fill-${stop.num}" style="width:0%"></div>
+          </div>
+          <div class="time-display">
+            <span id="cur-${stop.num}">0:00</span>
+            <span>${formatTime(stop.duration)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="audio-note">Load the original MP3 file to play audio for this stop.</div>
+    </div>
+
+    <div class="map-section">
+      <div class="section-label">Location</div>
+      <iframe class="map-frame" src="${mapSrc}" allowfullscreen loading="lazy" title="Map for ${stop.title}"></iframe>
+    </div>
+
+    <div class="narrative-section">
+      <div class="section-label">About This Stop</div>
+      <div class="narrative-text">
+        ${stop.narrative}
+        <div class="pull-quote">${stop.pullQuote}</div>
+        <div class="tags">${tagsHtml}</div>
+      </div>
+    </div>
+
+    <div class="lookfor-section">
+      <div class="section-label">What to Look For</div>
+      <ul class="lookfor-items">
+        ${stop.lookFor.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+    </div>
+
+    <div class="then-now">
+      <div class="section-label">Then &amp; Now</div>
+      <div class="then-now-grid">
+        <div class="then-col">
+          <div class="then-now-label">2007 (Tour Recorded)</div>
+          <div class="then-now-text">${stop.thenNow.then}</div>
+        </div>
+        <div class="now-col">
+          <div class="then-now-label">Today</div>
+          <div class="then-now-text">${stop.thenNow.now}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildTOC() {
+  const list = document.getElementById('tocList');
+  list.innerHTML = STOPS.map(stop => `
+    <li class="toc-item" onclick="goToStop(${stop.num - 1})">
+      <span class="toc-num">${String(stop.num).padStart(2,'0')}</span>
+      <div class="toc-item-info">
+        <div class="toc-item-title">${stop.title}</div>
+        <div class="toc-item-addr">${stop.address}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="toc-dur">${formatTime(stop.duration)}</div>
+        ${visited.has(stop.num) ? '<span class="toc-visited-badge">Visited</span>' : ''}
+      </div>
+    </li>
+  `).join('');
+}
+
+function buildDots() {
+  const container = document.getElementById('stopDots');
+  container.innerHTML = STOPS.map((s, i) => `
+    <div class="dot ${i === currentStop ? 'active' : visited.has(s.num) ? 'visited' : ''}"
+         onclick="goToStop(${i})" title="${s.title}"></div>
+  `).join('');
+}
+
+function updateProgress() {
+  const pct = ((currentStop + 1) / STOPS.length) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('stopCountLabel').textContent = `Stop ${currentStop + 1} of ${STOPS.length}`;
+  const stop = STOPS[currentStop];
+  document.getElementById('navStopName').textContent = stop.title;
+  document.getElementById('navStopPos').textContent = `${currentStop + 1} / ${STOPS.length}`;
+  document.getElementById('prevBtn').disabled = currentStop === 0;
+  document.getElementById('nextBtn').disabled = currentStop === STOPS.length - 1;
+  buildDots();
+}
+
+function goToStop(index) {
+  // Hide all stops
+  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('active'));
+  document.getElementById('tocView').classList.remove('active');
+  tocVisible = false;
+
+  currentStop = index;
+  visited.add(STOPS[index].num);
+  document.getElementById(`stop-${STOPS[index].num}`).classList.add('active');
+  updateProgress();
+  window.scrollTo(0, 0);
+}
+
+function navigate(dir) {
+  const next = currentStop + dir;
+  if (next >= 0 && next < STOPS.length) {
+    goToStop(next);
+  }
+}
+
+function toggleTOC() {
+  tocVisible = !tocVisible;
+  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('active'));
+  const toc = document.getElementById('tocView');
+  if (tocVisible) {
+    buildTOC();
+    toc.classList.add('active');
+  } else {
+    toc.classList.remove('active');
+    document.getElementById(`stop-${STOPS[currentStop].num}`).classList.add('active');
+  }
+}
+
+// Audio state (placeholder — would connect to actual files)
+const audioState = {};
+
+function togglePlay(stopNum) {
+  const btn = document.getElementById(`playBtn-${stopNum}`);
+  if (!audioState[stopNum]) {
+    audioState[stopNum] = { playing: false, progress: 0 };
+  }
+  const state = audioState[stopNum];
+  if (state.playing) {
+    state.playing = false;
+    btn.textContent = '▶';
+    clearInterval(state.interval);
+  } else {
+    state.playing = true;
+    btn.textContent = '⏸';
+    const stop = STOPS[stopNum - 1];
+    state.interval = setInterval(() => {
+      state.progress = Math.min(state.progress + 0.5, stop.duration);
+      const pct = (state.progress / stop.duration) * 100;
+      document.getElementById(`fill-${stopNum}`).style.width = pct + '%';
+      document.getElementById(`cur-${stopNum}`).textContent = formatTime(state.progress);
+      if (state.progress >= stop.duration) {
+        state.playing = false;
+        btn.textContent = '▶';
+        clearInterval(state.interval);
+      }
+    }, 500);
+  }
+}
+
+function seekAudio(event, stopNum) {
+  const bar = document.getElementById(`bar-${stopNum}`);
+  const rect = bar.getBoundingClientRect();
+  const pct = (event.clientX - rect.left) / rect.width;
+  const stop = STOPS[stopNum - 1];
+  if (!audioState[stopNum]) audioState[stopNum] = { playing: false, progress: 0 };
+  audioState[stopNum].progress = pct * stop.duration;
+  document.getElementById(`fill-${stopNum}`).style.width = (pct * 100) + '%';
+  document.getElementById(`cur-${stopNum}`).textContent = formatTime(audioState[stopNum].progress);
+}
+
+// INIT
+function init() {
+  const container = document.getElementById('stopsContainer');
+  container.innerHTML = STOPS.map(s => buildStopCard(s)).join('');
+  visited.add(1);
+  goToStop(0);
+}
+
+init();
+</script>
+</body>
+</html>
