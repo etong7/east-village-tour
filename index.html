@@ -645,6 +645,22 @@
 
 <script>
 const STOPS = [
+const BASE = 'https://etong7.github.io/east-village-tour/';
+const MP3S = [
+  '1-Intro_East_Village.mp3',
+  '2-8thSt_AveA.mp3',
+  '3-TompkinsCenter.mp3',
+  '4-Cristodora.mp3',
+  '5-AveB_8thSt.mp3',
+  '6-AveC_9thSt.mp3',
+  '7-6-AveC_9thSt2.mp3',
+  '8-6thSt_AveB.mp3',
+  '9-6th_1st-2ndAve.mp3',
+  '10-2ndAve_8th-9thSt.mp3',
+  '11-StMarks.mp3',
+  '12-315Bowery.mp3'
+];
+
   {
     num: 1,
     title: "Introduction: East Village",
@@ -933,6 +949,7 @@ function buildStopCard(stop) {
 
     <div class="audio-section">
       <div class="audio-label">Original NYT Audio · 2007</div>
+      <audio id="audio-${stop.num}" src="${BASE}${MP3S[stop.num - 1]}" preload="none"></audio>
       <div class="audio-player-custom">
         <button class="play-btn" id="playBtn-${stop.num}" onclick="togglePlay(${stop.num})">▶</button>
         <div class="audio-timeline">
@@ -941,11 +958,10 @@ function buildStopCard(stop) {
           </div>
           <div class="time-display">
             <span id="cur-${stop.num}">0:00</span>
-            <span>${formatTime(stop.duration)}</span>
+            <span id="dur-${stop.num}">${formatTime(stop.duration)}</span>
           </div>
         </div>
       </div>
-      <div class="audio-note">Load the original MP3 file to play audio for this stop.</div>
     </div>
 
     <div class="map-section">
@@ -1055,46 +1071,53 @@ function toggleTOC() {
   }
 }
 
-// Audio state (placeholder — would connect to actual files)
-const audioState = {};
-
+// Real audio control
 function togglePlay(stopNum) {
+  const audio = document.getElementById(`audio-${stopNum}`);
   const btn = document.getElementById(`playBtn-${stopNum}`);
-  if (!audioState[stopNum]) {
-    audioState[stopNum] = { playing: false, progress: 0 };
-  }
-  const state = audioState[stopNum];
-  if (state.playing) {
-    state.playing = false;
-    btn.textContent = '▶';
-    clearInterval(state.interval);
-  } else {
-    state.playing = true;
+
+  // Pause any other playing audio
+  document.querySelectorAll('audio').forEach(a => {
+    if (a !== audio && !a.paused) {
+      a.pause();
+      const n = a.id.replace('audio-','');
+      const b = document.getElementById(`playBtn-${n}`);
+      if (b) b.textContent = '▶';
+    }
+  });
+
+  if (audio.paused) {
+    audio.play();
     btn.textContent = '⏸';
-    const stop = STOPS[stopNum - 1];
-    state.interval = setInterval(() => {
-      state.progress = Math.min(state.progress + 0.5, stop.duration);
-      const pct = (state.progress / stop.duration) * 100;
-      document.getElementById(`fill-${stopNum}`).style.width = pct + '%';
-      document.getElementById(`cur-${stopNum}`).textContent = formatTime(state.progress);
-      if (state.progress >= stop.duration) {
-        state.playing = false;
-        btn.textContent = '▶';
-        clearInterval(state.interval);
-      }
-    }, 500);
+  } else {
+    audio.pause();
+    btn.textContent = '▶';
   }
+
+  audio.ontimeupdate = () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    document.getElementById(`fill-${stopNum}`).style.width = pct + '%';
+    document.getElementById(`cur-${stopNum}`).textContent = formatTime(audio.currentTime);
+  };
+
+  audio.onended = () => {
+    btn.textContent = '▶';
+    document.getElementById(`fill-${stopNum}`).style.width = '0%';
+    document.getElementById(`cur-${stopNum}`).textContent = '0:00';
+  };
 }
 
 function seekAudio(event, stopNum) {
+  const audio = document.getElementById(`audio-${stopNum}`);
   const bar = document.getElementById(`bar-${stopNum}`);
   const rect = bar.getBoundingClientRect();
   const pct = (event.clientX - rect.left) / rect.width;
-  const stop = STOPS[stopNum - 1];
-  if (!audioState[stopNum]) audioState[stopNum] = { playing: false, progress: 0 };
-  audioState[stopNum].progress = pct * stop.duration;
-  document.getElementById(`fill-${stopNum}`).style.width = (pct * 100) + '%';
-  document.getElementById(`cur-${stopNum}`).textContent = formatTime(audioState[stopNum].progress);
+  if (audio.duration) {
+    audio.currentTime = pct * audio.duration;
+    document.getElementById(`fill-${stopNum}`).style.width = (pct * 100) + '%';
+    document.getElementById(`cur-${stopNum}`).textContent = formatTime(audio.currentTime);
+  }
 }
 
 // INIT
