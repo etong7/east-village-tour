@@ -594,6 +594,60 @@ function seekAudio(event, tourId, stopNum) {
   }
 }
 
+// SWIPE GESTURES
+// Left/right = switch tours, Up/down = prev/next stop
+(function() {
+  const THRESHOLD = 50;   // min px to count as a swipe
+  const EDGE = 30;        // ignore swipes starting within 30px of screen edge (iOS back gesture)
+  let startX, startY, locked;
+
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    locked = null; // direction not yet determined
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (startX === undefined) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Ignore if swipe started too close to screen edge (iOS back/forward)
+    if (startX < EDGE || startX > window.innerWidth - EDGE) return;
+
+    // Must exceed threshold
+    if (Math.max(absDx, absDy) < THRESHOLD) return;
+
+    // Lock to dominant axis
+    if (absDx > absDy) {
+      // HORIZONTAL — switch tours
+      if (dx < 0) {
+        // swipe left = next tour
+        const next = (currentTourIdx + 1) % TOURS.length;
+        switchTour(next);
+      } else {
+        // swipe right = prev tour
+        const prev = (currentTourIdx - 1 + TOURS.length) % TOURS.length;
+        switchTour(prev);
+      }
+    } else {
+      // VERTICAL — prev/next stop
+      if (dy < 0) {
+        // swipe up = next stop
+        navigate(1);
+      } else {
+        // swipe down = prev stop
+        navigate(-1);
+      }
+    }
+    startX = startY = undefined;
+  }, { passive: true });
+})();
+
 function init() {
   buildTourTabs();
   renderStops();
