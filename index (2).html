@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NYT NYC Walking Tours</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0f0e0a;
+  --paper: #f5f0e8;
+  --aged: #e8e0cc;
+  --rust: #b5431a;
+  --rust-light: #d4582a;
+  --slate: #4a5568;
+  --muted: #8a7f6e;
+  --accent: #1a3a5c;
+  --green: #2d5a27;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Space Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* MASTHEAD */
+.masthead {
+  border-bottom: 3px double var(--ink);
+  padding: 14px 20px 10px;
+  text-align: center;
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.masthead-eyebrow {
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.masthead-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(20px, 4vw, 30px);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.masthead-sub {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 5px;
+  border-top: 1px solid var(--aged);
+  padding-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.toc-toggle {
+  background: none;
+  border: none;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.toc-toggle:hover { color: var(--rust); }
+
+/* TOUR SELECTOR */
+.tour-selector {
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+  border-bottom: 2px solid var(--ink);
+  background: var(--ink);
+  scrollbar-width: none;
+}
+.tour-selector::-webkit-scrollbar { display: none; }
+.tour-tab {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  border-right: 1px solid #222;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tour-tab:hover { color: var(--paper); }
+.tour-tab.active {
+  background: var(--rust);
+  color: white;
+}
+
+/* PROGRESS */
+.progress-track { height: 3px; background: var(--aged); }
+.progress-fill { height: 100%; background: var(--rust); transition: width 0.5s ease; }
+
+/* STOP COUNTER */
+.stop-counter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--aged);
+}
+.stop-dots { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--aged); cursor: pointer;
+  transition: all 0.2s; border: 1px solid var(--muted);
+}
+.dot.active { background: var(--rust); border-color: var(--rust); transform: scale(1.3); }
+.dot.visited { background: var(--slate); border-color: var(--slate); }
+
+/* MAIN */
+.main { max-width: 680px; margin: 0 auto; padding: 0 0 120px; }
+
+/* STOP CARD */
+.stop-card { display: none; animation: fadeSlide 0.4s ease; }
+.stop-card.active { display: block; }
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stop-header { padding: 20px 20px 0; border-bottom: 1px solid var(--aged); }
+.stop-number-line { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.stop-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 48px; font-weight: 700;
+  color: var(--aged); line-height: 1; letter-spacing: -2px;
+}
+.stop-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+.stop-title { font-family: 'Playfair Display', serif; font-size: clamp(18px, 4vw, 26px); font-weight: 700; line-height: 1.2; margin-bottom: 6px; }
+.stop-address { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--rust); padding-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+.stop-address::before { content: '◆'; font-size: 7px; }
+
+/* AUDIO */
+.audio-section { margin: 0 20px; padding: 16px 0; border-bottom: 1px solid var(--aged); }
+.audio-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.audio-player-custom {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--ink); color: var(--paper);
+  padding: 12px 16px; border-radius: 2px;
+}
+.play-btn {
+  width: 32px; height: 32px; border: none; background: var(--rust);
+  color: white; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border-radius: 1px; transition: background 0.2s;
+}
+.play-btn:hover { background: var(--rust-light); }
+.audio-timeline { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.timeline-bar { width: 100%; height: 3px; background: #333; cursor: pointer; position: relative; border-radius: 2px; }
+.timeline-fill { height: 100%; background: var(--rust); border-radius: 2px; pointer-events: none; }
+.time-display { font-size: 10px; letter-spacing: 1px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* NARRATIVE */
+.narrative-section { padding: 20px; border-bottom: 1px solid var(--aged); }
+.section-label {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--aged); }
+.narrative-text { font-family: 'Playfair Display', serif; font-size: 16px; line-height: 1.75; }
+.narrative-text p + p { margin-top: 12px; }
+.pull-quote {
+  border-left: 3px solid var(--rust); padding: 8px 16px; margin: 16px 0;
+  font-family: 'Playfair Display', serif; font-style: italic;
+  font-size: 17px; color: var(--accent); line-height: 1.6;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tag { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 3px 8px; border: 1px solid currentColor; border-radius: 1px; }
+.tag-history { color: var(--accent); }
+.tag-culture { color: var(--rust); }
+.tag-music { color: var(--green); }
+.tag-politics { color: var(--slate); }
+.tag-architecture { color: var(--muted); }
+
+/* MAP */
+.map-section { margin: 0 20px; padding: 16px 0; border-bottom: 1px solid var(--aged); }
+.map-frame { width: 100%; height: 200px; border: none; border-radius: 2px; filter: sepia(20%) contrast(95%); }
+
+/* LOOK FOR */
+.lookfor-section { padding: 16px 20px; border-bottom: 1px solid var(--aged); background: var(--aged); }
+.lookfor-items { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.lookfor-items li { font-size: 13px; line-height: 1.5; padding-left: 16px; position: relative; }
+.lookfor-items li::before { content: '→'; position: absolute; left: 0; color: var(--rust); font-size: 11px; }
+
+/* THEN NOW */
+.then-now { padding: 16px 20px; border-bottom: 1px solid var(--aged); }
+.then-now-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.then-col { padding: 12px; background: var(--ink); color: var(--paper); border-radius: 2px; }
+.now-col { padding: 12px; background: var(--rust); color: white; border-radius: 2px; }
+.then-now-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; }
+.then-now-text { font-family: 'Playfair Display', serif; font-size: 13px; line-height: 1.6; }
+
+/* TOC */
+.toc-view { display: none; padding: 20px; }
+.toc-view.active { display: block; }
+.toc-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.toc-intro { font-size: 12px; line-height: 1.8; color: var(--slate); margin-bottom: 20px; border-bottom: 1px solid var(--aged); padding-bottom: 16px; }
+.toc-list { list-style: none; }
+.toc-item { display: flex; align-items: baseline; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--aged); cursor: pointer; transition: all 0.2s; }
+.toc-item:hover .toc-item-title { color: var(--rust); }
+.toc-num { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--aged); font-weight: 700; min-width: 28px; }
+.toc-item-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 700; transition: color 0.2s; }
+.toc-item-addr { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--rust); margin-top: 2px; }
+.toc-dur { font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+/* NAV BAR */
+.nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; gap: 12px; z-index: 200;
+  border-top: 2px solid var(--rust);
+}
+.nav-btn {
+  background: none; border: 1px solid var(--muted); color: var(--paper);
+  padding: 10px 16px; font-family: 'Space Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s; border-radius: 1px; white-space: nowrap;
+}
+.nav-btn:hover:not(:disabled) { background: var(--rust); border-color: var(--rust); color: white; }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.nav-center { text-align: center; flex: 1; }
+.nav-stop-name { font-family: 'Playfair Display', serif; font-size: 13px; line-height: 1.3; }
+.nav-stop-pos { font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-top: 2px; }
+
+/* PHOTO */
+.photo-section { position: relative; border-bottom: 1px solid var(--aged); overflow: hidden; background: #111; }
+.stop-photo { width: 100%; height: 220px; object-fit: cover; display: block; transition: opacity 0.3s; }
+.photo-caption { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.75)); color: white; font-size: 10px; letter-spacing: 1px; padding: 20px 12px 8px; font-family: 'Space Mono', monospace; }
+.photo-hidden { display: none; }
+
+/* WALK TIME */
+.walk-time-bar { padding: 10px 20px; background: var(--ink); color: var(--paper); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #222; }
+.walk-time-bar span { color: var(--rust); }
+
+/* START NEAR ME */
+.nearme-bar { padding: 12px 20px; background: var(--aged); border-bottom: 1px solid var(--ink); display: flex; align-items: center; justify-content: space-between; }
+.nearme-btn { background: var(--ink); color: var(--paper); border: none; padding: 8px 14px; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; border-radius: 1px; transition: background 0.2s; }
+.nearme-btn:hover { background: var(--rust); }
+.nearme-label { font-size: 10px; letter-spacing: 1px; color: var(--slate); }
+
+/* TRANSCRIPT */
+.transcript-section { padding: 16px 20px; border-bottom: 1px solid var(--aged); }
+.transcript-toggle { background: none; border: 1px solid var(--aged); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 12px; cursor: pointer; border-radius: 1px; transition: all 0.2s; }
+.transcript-toggle:hover { border-color: var(--rust); color: var(--rust); }
+.transcript-body { display: none; margin-top: 12px; font-size: 13px; line-height: 1.8; color: var(--slate); font-family: 'Playfair Display', serif; }
+.transcript-body.open { display: block; }
+.transcript-note { font-size: 10px; color: var(--muted); margin-bottom: 10px; letter-spacing: 1px; font-family: 'Space Mono', monospace; }
+
+@media (max-width: 480px) {
+  .then-now-grid { grid-template-columns: 1fr; }
+  .stop-num { font-size: 36px; }
+  .stop-photo { height: 180px; }
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-eyebrow">The New York Times · Neighborhood Audio Tours</div>
+  <div class="masthead-title">NYC Walking Tours</div>
+  <div class="masthead-sub">
+    <button class="toc-toggle" onclick="toggleTOC()">All Stops</button>
+    <span id="tourMeta">5 Tours · 43 Stops</span>
+  </div>
+</div>
+
+<div class="nearme-bar">
+  <span class="nearme-label" id="nearmeLabel">Find your nearest stop</span>
+  <button class="nearme-btn" onclick="startNearMe()">📍 Start Near Me</button>
+</div>
+
+<div class="tour-selector" id="tourSelector"></div>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+<div class="stop-counter">
+  <span id="stopCountLabel">Stop 1</span>
+  <div class="stop-dots" id="stopDots"></div>
+</div>
+
+<div class="main" id="mainContent">
+  <div class="toc-view" id="tocView">
+    <div class="toc-title" id="tocTitle"></div>
+    <p class="toc-intro" id="tocIntro"></p>
+    <ul class="toc-list" id="tocList"></ul>
+  </div>
+  <div id="stopsContainer"></div>
+</div>
+
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="navigate(-1)">← Prev</button>
+  <div class="nav-center">
+    <div class="nav-stop-name" id="navStopName"></div>
+    <div class="nav-stop-pos" id="navStopPos"></div>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="navigate(1)">Next →</button>
+</div>
+
+<script>
+const BASE = 'https://etong7.github.io/east-village-tour/';
+const PHOTOS = {
+  "east-village-1": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/East_Village,_Manhattan.jpg/700px-East_Village,_Manhattan.jpg", caption: "East Village, Manhattan", credit: "Wikimedia Commons"},
+  "east-village-2": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Tompkins_Square_Park.JPG/700px-Tompkins_Square_Park.JPG", caption: "Tompkins Square Park", credit: "Wikimedia Commons"},
+  "east-village-3": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Tompkins_Square_Park_Riot_Reunion_Shankbone_2012.jpg/700px-Tompkins_Square_Park_Riot_Reunion_Shankbone_2012.jpg", caption: "Tompkins Square Park, 2012", credit: "Wikimedia Commons"},
+  "east-village-4": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Christodora_House_jeh.jpg/700px-Christodora_House_jeh.jpg", caption: "Christodora House, Avenue B", credit: "Wikimedia Commons"},
+  "east-village-5": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Alphabet_city_1977.jpg/700px-Alphabet_city_1977.jpg", caption: "Alphabet City, 1977", credit: "Wikimedia Commons"},
+  "east-village-6": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Loisaida_Avenue_C.jpg/700px-Loisaida_Avenue_C.jpg", caption: "Avenue C, Loisaida Ave", credit: "Wikimedia Commons"},
+  "east-village-7": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/6BC_Botanical_Garden.jpg/700px-6BC_Botanical_Garden.jpg", caption: "6BC Botanical Garden, East Village", credit: "Wikimedia Commons"},
+  "east-village-8": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/East_6th_Street_Manhattan.jpg/700px-East_6th_Street_Manhattan.jpg", caption: "East 6th Street, Manhattan", credit: "Wikimedia Commons"},
+  "east-village-9": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Lower_East_Side_tenements_1912.jpg/700px-Lower_East_Side_tenements_1912.jpg", caption: "Lower East Side tenements, c.1912", credit: "Wikimedia Commons"},
+  "east-village-10": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/2nd_Ave_Deli_2006.jpg/700px-2nd_Ave_Deli_2006.jpg", caption: "Second Avenue, Yiddish theater district", credit: "Wikimedia Commons"},
+  "east-village-11": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/St_Marks_Pl_jeh.jpg/700px-St_Marks_Pl_jeh.jpg", caption: "St. Marks Place", credit: "Wikimedia Commons"},
+  "east-village-12": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Cbgb81.jpg/700px-Cbgb81.jpg", caption: "CBGB, 1981", credit: "Wikimedia Commons"},
+  "hells-kitchen-1": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hells_Kitchen,_Manhattan.jpg/700px-Hells_Kitchen,_Manhattan.jpg", caption: "Hell's Kitchen, Manhattan", credit: "Wikimedia Commons"},
+  "hells-kitchen-2": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/High_Line_NYC_Section_1.jpg/700px-High_Line_NYC_Section_1.jpg", caption: "High Line, West Side", credit: "Wikimedia Commons"},
+  "hells-kitchen-3": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hells_Kitchen,_Manhattan.jpg/700px-Hells_Kitchen,_Manhattan.jpg", caption: "West 43rd St, Hell's Kitchen", credit: "Wikimedia Commons"},
+  "hells-kitchen-4": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hells_Kitchen,_Manhattan.jpg/700px-Hells_Kitchen,_Manhattan.jpg", caption: "Hell's Kitchen tenements", credit: "Wikimedia Commons"},
+  "hells-kitchen-5": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Times_Square_jeh.jpg/700px-Times_Square_jeh.jpg", caption: "Theater District, Manhattan", credit: "Wikimedia Commons"},
+  "hells-kitchen-6": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/NYC_tenement_1935.jpg/700px-NYC_tenement_1935.jpg", caption: "Manhattan tenement building", credit: "Wikimedia Commons"},
+  "hells-kitchen-7": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Restaurant_Row_46th_St.jpg/700px-Restaurant_Row_46th_St.jpg", caption: "Restaurant Row, 46th Street", credit: "Wikimedia Commons"},
+  "hells-kitchen-8": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hells_Kitchen,_Manhattan.jpg/700px-Hells_Kitchen,_Manhattan.jpg", caption: "West 46th St, Hell's Kitchen", credit: "Wikimedia Commons"},
+  "hells-kitchen-9": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Hudson_River_Park_jeh.jpg/700px-Hudson_River_Park_jeh.jpg", caption: "Hudson River Park", credit: "Wikimedia Commons"},
+  "hells-kitchen-10": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Hudson_Yards_NYC_2021.jpg/700px-Hudson_Yards_NYC_2021.jpg", caption: "Hudson Yards, Manhattan", credit: "Wikimedia Commons"},
+  "hells-kitchen-11": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Hells_Kitchen,_Manhattan.jpg/700px-Hells_Kitchen,_Manhattan.jpg", caption: "Hell's Kitchen, north end", credit: "Wikimedia Commons"},
+  "brooklyn-underground-1": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Brooklyn_Heights_neighborhood.jpg/700px-Brooklyn_Heights_neighborhood.jpg", caption: "Brooklyn Heights brownstones", credit: "Wikimedia Commons"},
+  "brooklyn-underground-2": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/BrooklynPromenade.jpg/700px-BrooklynPromenade.jpg", caption: "Brooklyn Heights Promenade", credit: "Wikimedia Commons"},
+  "brooklyn-underground-3": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Plymouth_Church_of_the_Pilgrims.jpg/700px-Plymouth_Church_of_the_Pilgrims.jpg", caption: "Plymouth Church of the Pilgrims", credit: "Wikimedia Commons"},
+  "brooklyn-underground-4": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Duffield_St_jeh.jpg/700px-Duffield_St_jeh.jpg", caption: "Duffield Street, Brooklyn", credit: "Wikimedia Commons"},
+  "brooklyn-underground-5": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/WeeksvilleHunterfly.jpg/700px-WeeksvilleHunterfly.jpg", caption: "Weeksville Hunterfly Road Houses", credit: "Wikimedia Commons"},
+  "barnum-1": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/P._T._Barnum_1851.jpg/700px-P._T._Barnum_1851.jpg", caption: "P.T. Barnum, 1851", credit: "Wikimedia Commons"},
+  "barnum-2": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Broadway_NYC_1900.jpg/700px-Broadway_NYC_1900.jpg", caption: "Broadway, lower Manhattan, c.1900", credit: "Wikimedia Commons"},
+  "barnum-3": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Castle_Clinton_from_the_south,_2012.jpg/700px-Castle_Clinton_from_the_south,_2012.jpg", caption: "Castle Clinton, Battery Park", credit: "Wikimedia Commons"},
+  "barnum-4": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Castle_Clinton_from_the_south,_2012.jpg/700px-Castle_Clinton_from_the_south,_2012.jpg", caption: "Castle Clinton, Battery Park", credit: "Wikimedia Commons"},
+  "barnum-5": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Grace_Church_NYC_1.jpg/700px-Grace_Church_NYC_1.jpg", caption: "Grace Church, Broadway & 10th St", credit: "Wikimedia Commons"},
+  "barnum-6": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Madison_Square_Park_jeh.jpg/700px-Madison_Square_Park_jeh.jpg", caption: "Madison Square Park", credit: "Wikimedia Commons"},
+  "ues-1": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/5th_Avenue_Museum_Mile.jpg/700px-5th_Avenue_Museum_Mile.jpg", caption: "Fifth Avenue, Museum Mile", credit: "Wikimedia Commons"},
+  "ues-2": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Temple_Emanu-El_5th_Ave_65th_St.jpg/700px-Temple_Emanu-El_5th_Ave_65th_St.jpg", caption: "Temple Emanu-El, 5th Ave & 65th St", credit: "Wikimedia Commons"},
+  "ues-3": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Ukrainian_Institute_of_America.jpg/700px-Ukrainian_Institute_of_America.jpg", caption: "Ukrainian Institute of America", credit: "Wikimedia Commons"},
+  "ues-4": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Cooper_Hewitt_Smithsonian_Design_Museum.jpg/700px-Cooper_Hewitt_Smithsonian_Design_Museum.jpg", caption: "Cooper Hewitt, Carnegie Mansion", credit: "Wikimedia Commons"},
+  "ues-5": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Gracie_Mansion_jeh.jpg/700px-Gracie_Mansion_jeh.jpg", caption: "Gracie Mansion, East End Ave", credit: "Wikimedia Commons"},
+  "ues-6": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Schaller_and_Weber_deli.jpg/700px-Schaller_and_Weber_deli.jpg", caption: "Schaller & Weber, Yorkville", credit: "Wikimedia Commons"},
+  "ues-7": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Cherokee_Apartments_Manhattan.jpg/700px-Cherokee_Apartments_Manhattan.jpg", caption: "Cherokee Apartments, 77th St", credit: "Wikimedia Commons"},
+  "ues-8": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Frick_Collection_2010.jpg/700px-Frick_Collection_2010.jpg", caption: "Frick Collection, 70th & 5th Ave", credit: "Wikimedia Commons"},
+  "ues-9": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Upper_East_Side_jeh.jpg/700px-Upper_East_Side_jeh.jpg", caption: "Upper East Side residential", credit: "Wikimedia Commons"},
+  "ues-10": {url: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Upper_East_Side_jeh.jpg/700px-Upper_East_Side_jeh.jpg", caption: "Upper East Side, 63rd Street", credit: "Wikimedia Commons"},
+};
+
+
+const TOURS = [
+  {
+    id: 'east-village',
+    name: 'East Village',
+    color: '#b5431a',
+    intro: 'A 2007 NYT audio tour through one of Manhattan\'s most historically dense neighborhoods, shaped by immigrant waves, radical politics, punk rock, and relentless gentrification.',
+    stops: [
+      { num:1, title:'Introduction: East Village', address:'Starting Point — 8th St & Ave A', duration:82, mp3:'1-Intro_East_Village.mp3', coords:'40.7267,-73.9831', tags:['history','culture'], narrative:'<p>Welcome to the East Village — or what used to be the Lower East Side before the neighborhood rebranded itself in the 1960s. The name change tells you something about the place: always reinventing, always contested.</p><p>Bounded roughly by 14th Street to the north, Houston to the south, Third Avenue to the west, and Avenue D to the east, the East Village has been home to waves of German, Irish, Jewish, Ukrainian, and Puerto Rican immigrants — and then the poets, punks, junkies, and artists who came for the cheap rent.</p>', pullQuote:'The East Village has always been the place where New York goes to reinvent itself.', lookFor:['The Astor Place Cube — technically called "Alamo," it still spins','Cooper Union building, where Lincoln gave his 1860 speech','The mix of tenements and converted storefronts along 8th Street'], then:'2007: rents rising but bohemian identity still visible. CBGB had just closed (Oct 2006).', now:'Among the most expensive rental markets in NYC. The dive bars and cheap eats are largely gone.' },
+      { num:2, title:'8th Street & Avenue A', address:'E 8th St & Ave A', duration:235, mp3:'2-8thSt_AveA.mp3', coords:'40.7267,-73.9831', tags:['culture','history','music'], narrative:'<p>Avenue A and 8th Street sits at the western edge of Tompkins Square Park — one of the great flashpoint locations in NYC history. The park has seen labor riots in 1874, the 1988 police riot, and waves of hippies, punks, and homeless encampments.</p><p>The streets here in the 1970s and 80s were genuinely dangerous — part of what made the neighborhood a magnet for artists who couldn\'t afford anything else.</p>', pullQuote:'Tompkins Square Park was where the neighborhood fought — against landlords, against the police, against displacement.', lookFor:['The park\'s eastern edge where the tent city stood during the 1988 riots','The dog run which replaced the area where houseless residents camped','The bandshell location — now demolished, it hosted countless punk shows'], then:'The park had recently been cleaned up after the 1988 riots. Drug dealing still visible on surrounding blocks.', now:'Fully gentrified park. Surrounding blocks have some of Manhattan\'s most expensive rentals.' },
+      { num:3, title:'Tompkins Square Park', address:'Tompkins Square Park, E 10th St', duration:99, mp3:'3-TompkinsCenter.mp3', coords:'40.7264,-73.9818', tags:['history','politics'], narrative:'<p>Stand in the center of Tompkins Square Park and you\'re standing in one of the most contested public spaces in NYC. The 1988 riot — when police clashed violently with protestors resisting a curfew — became a defining moment in the story of East Village gentrification.</p><p>The bandshell hosted everything from the Grateful Dead to hardcore matinees. It was demolished after the riots.</p>', pullQuote:'The 1988 riot wasn\'t about the park. It was about who the city was for.', lookFor:['Elm trees over 100 years old — they predate the riots by generations','Chess tables on the south side, unchanged for decades','Plaques and memorials along the pathways'], then:'Focal point of neighborhood tensions — squatters, activists vs. developers and the city.', now:'A well-maintained neighborhood park. Political energy has dissipated.' },
+      { num:4, title:'The Christodora House', address:'143 Avenue B at E 9th St', duration:167, mp3:'4-Cristodora.mp3', coords:'40.7264,-73.9800', tags:['architecture','history','politics'], narrative:'<p>The Christodora House is one of the most despised — and most architecturally beautiful — buildings in East Village history. Built in 1928 as a settlement house for immigrants, it was converted to luxury condos in 1986.</p><p>That conversion made it a symbol of gentrification. During the 1988 riots, a mob spray-painted "Die Yuppie Scum" on the facade — a phrase that became the era\'s battle cry.</p>', pullQuote:'Die Yuppie Scum. The spray paint is gone but the condos are still there.', lookFor:['The building\'s 16-story height, designed to be seen across the park','The arched entrance, original from 1928','The contrast with surrounding tenements'], then:'Units selling for what felt like shocking prices — $300-400K.', now:'Units now sell for $2M+. Fully normalized into the neighborhood\'s luxury fabric.' },
+      { num:5, title:'Avenue B & 8th Street', address:'Ave B & E 8th St', duration:70, mp3:'5-AveB_8thSt.mp3', coords:'40.7257,-73.9808', tags:['culture','history'], narrative:'<p>This corner sits in the heart of "Alphabet City" — avenues A through D making up the eastern edge of the East Village. In the 1980s, this was ground zero for the crack epidemic.</p><p>The Puerto Rican community that dominated these blocks from the 1950s built a rich cultural life here despite poverty and neglect — bodegas, social clubs, community gardens, and Nuyorican poetry.</p>', pullQuote:'Alphabet City was where New York hid what it didn\'t want to deal with.', lookFor:['Community gardens on many side streets — some of the oldest in NYC','Remnants of old Spanish signage on storefronts','Late 1800s tenement architecture throughout'], then:'Still transitional — bodegas and Puerto Rican businesses alongside new bars.', now:'Almost fully gentrified. A few legacy businesses remain.' },
+      { num:6, title:'Avenue C & 9th Street', address:'Ave C & E 9th St', duration:156, mp3:'6-AveC_9thSt.mp3', coords:'40.7253,-73.9778', tags:['culture','history','politics'], narrative:'<p>Avenue C in the early 1980s was essentially abandoned — landlords burning buildings for insurance money, drug trade making certain blocks hazardous. Into that vacuum came squatters: artists, anarchists, and activists who occupied vacant buildings.</p><p>The Umbrella House on Avenue C is one of the few surviving sweat-equity squatter buildings that made it through.</p>', pullQuote:'The squatters didn\'t just want shelter. They wanted to prove the city had abandoned its own people.', lookFor:['The Umbrella House near 9th — a squat turned co-op','La Plaza Cultural garden','How far east feels from the subway'], then:'Squatter movement winding down. City had won most battles but some buildings legalized.', now:'New development has crept even to Avenue C and D. Rents are high even here.' },
+      { num:7, title:'Avenue C & 9th St (Continued)', address:'Ave C & E 9th St — East', duration:78, mp3:'7-6-AveC_9thSt2.mp3', coords:'40.7243,-73.9758', tags:['culture','history'], narrative:'<p>The community gardens along this stretch were created in the 1970s and 80s on lots the city had written off. Residents cleared rubble, built raised beds, and created green spaces that became anchors of community life.</p><p>The city tried to sell some lots for development in the late 1990s, leading to fierce battles. Most gardens were ultimately preserved through land trusts.</p>', pullQuote:'The gardens were an act of political defiance that became community infrastructure.', lookFor:['Garden fence signs showing founding dates — most are early 1980s','Variety of garden styles — some formal, some wild','6BC Botanical Garden on 6th St near Ave B'], then:'Gardens secure after the late-90s battles but still felt like contested territory.', now:'Protected by agreements with the Parks Department. Now a celebrated neighborhood feature.' },
+      { num:8, title:'6th Street & Avenue B', address:'E 6th St & Ave B', duration:116, mp3:'8-6thSt_AveB.mp3', coords:'40.7243,-73.9820', tags:['culture','history','music'], narrative:'<p>6th Street between First and Second Avenues was once lined with Indian restaurants — a dense cluster of curry houses that made it a New York institution. "Indian Row" was where you went for cheap, decent food.</p><p>Most are gone now. The low-margin model couldn\'t survive rising rents.</p>', pullQuote:'The East Village was a place you could afford to be broke in. That\'s what made it possible.', lookFor:['The remaining Indian restaurants — a few still hang on','Row houses and tenements along 6th Street','Fire escapes — an architectural signature of this neighborhood'], then:'Indian Row was still going strong, a reliable cheap-eats option.', now:'Most of the Indian restaurants have closed. Rents made the model impossible.' },
+      { num:9, title:'6th Street — 1st to 2nd Ave', address:'E 6th St between 1st & 2nd Ave', duration:121, mp3:'9-6th_1st-2ndAve.mp3', coords:'40.7264,-73.9862', tags:['culture','history','architecture'], narrative:'<p>Walking west on 6th Street, you\'re moving through the older residential heart of the neighborhood. The tenement buildings here were built in the 1880s and 1890s to house waves of Eastern European Jewish immigrants.</p><p>Many housed families of eight or more in two or three rooms, with shared bathrooms and no central heat. The structures remain; the lives lived in them are almost impossible to reconstruct.</p>', pullQuote:'The tenements were meant to be temporary. They turned out to be permanent.', lookFor:['Narrow lots and five-story walk-up profiles','Carved stone lintels above doorways with dates from the 1890s','How buildings share party walls — a continuous urban fabric'], then:'Many still rent-stabilized, housing long-term tenants alongside newcomers.', now:'Ongoing battles over rent stabilization. Some buildings fully market-rate.' },
+      { num:10, title:'2nd Avenue — 8th to 9th St', address:'2nd Ave between E 8th & E 9th St', duration:81, mp3:'10-2ndAve_8th-9thSt.mp3', coords:'40.7286,-73.9877', tags:['culture','history'], narrative:'<p>Second Avenue was once "Yiddish Broadway" — a strip of Yiddish-language theaters serving the massive Jewish immigrant population. At its peak in the early 20th century, this was one of the great theatrical districts in America.</p><p>The theaters are gone. A few plaques remain. The Second Avenue Deli, which anchored this identity, closed in 2006 and relocated to Midtown.</p>', pullQuote:'Yiddish Broadway was one of the great American theatrical traditions. Almost no one remembers it now.', lookFor:['Stars on the sidewalk — a Yiddish Theater Walk of Fame along 2nd Ave','Former theater facades now housing restaurants or banks','Landmarked buildings preserving the early 20th century streetscape'], then:'The Second Avenue Deli was still here on 10th Street — it closed in 2006.', now:'The deli reopened in Midtown (33rd St). The 2nd Ave stretch largely redeveloped.' },
+      { num:11, title:'St. Mark\'s Place', address:'E 8th St (St. Mark\'s Pl) — 2nd to 3rd Ave', duration:198, mp3:'11-StMarks.mp3', coords:'40.7281,-73.9865', tags:['culture','music','history'], narrative:'<p>St. Mark\'s Place — officially East 8th Street — is the neighborhood\'s main artery and one of the most mythologized blocks in American counterculture. W.H. Auden lived here. Trotsky had an office nearby. Andy Warhol\'s Electric Circus was here. The Ramones played nearby.</p><p>In its peak years through the 70s and 80s, St. Mark\'s was where the underground surfaced: record stores, head shops, radical bookstores, punk venues. The Gem Spa newsstand — famous for egg creams and album covers — closed in 2020.</p>', pullQuote:'St. Mark\'s Place was the address of American bohemia for two generations. Then the rents went up.', lookFor:['96 St. Mark\'s — home to Auden and earlier Trotsky','Remaining tattoo and piercing shops — holdovers from the 80s-90s','The corner at 2nd Ave where Gem Spa stood'], then:'St. Mark\'s in 2007 was a shadow of its former self but still had record shops and the Gem Spa.', now:'Gem Spa closed 2020. Most independent shops gone. Largely restaurants and tourist retail.' },
+      { num:12, title:'315 Bowery — CBGB', address:'315 Bowery at Bleecker St', duration:117, mp3:'12-315Bowery.mp3', coords:'40.7251,-73.9919', tags:['music','culture','history'], narrative:'<p>315 Bowery is where CBGB stood — the club that launched American punk and new wave. From 1973 until it closed in October 2006, CBGB hosted the Ramones, Television, Patti Smith, Blondie, Talking Heads, Bad Brains, and Sonic Youth.</p><p>Owner Hilly Kristal died in 2007 — the year this tour was recorded. The space became a John Varvatos boutique, which felt like the perfect symbol of everything that had happened to the neighborhood.</p>', pullQuote:'CBGB closed October 15, 2006. Patti Smith played the last show. She sang "Elegie" for the room.', lookFor:['315 Bowery — look for the ghost of the CBGB sign on the awning','The Bowery Hotel — once a flophouse strip','The remaining missions and shelters — the Bowery\'s older identity persisting'], then:'CBGB had literally just closed — the wound was fresh.', now:'CBGB is mythology now. John Varvatos also closed (2020). The Bowery is luxury real estate.' }
+    ]
+  },
+  {
+    id: 'hells-kitchen',
+    name: "Hell's Kitchen",
+    color: '#1a3a5c',
+    intro: 'A 2007 NYT audio tour through Hell\'s Kitchen — once one of Manhattan\'s most notorious working-class neighborhoods, home to Irish gangs, the meatpacking trade, and the theater district\'s backstage workforce.',
+    stops: [
+      { num:1, title:"Introduction: Hell's Kitchen", address:"Starting Point — W 39th St", duration:90, mp3:"hk-1_Introduction_Hells_Kitchen_Tour.mp3", coords:'40.7549,-74.0019', tags:['history','culture'], narrative:"<p>Hell's Kitchen runs from 34th Street to 59th Street, west of Eighth Avenue to the Hudson River. For most of its history it was one of Manhattan's most dangerous and densely packed working-class neighborhoods.</p><p>The name's origin is disputed — some say it came from a veteran cop watching a riot in the 1880s. What's certain is that by the late 19th century, Hell's Kitchen was synonymous with poverty, gang violence, and the gritty infrastructure that kept Manhattan running.</p>", pullQuote:"Hell's Kitchen was where New York put the people and industries it needed but didn't want to see.", lookFor:["The Hudson Yards development to the south — the newest face of far west Manhattan","The scale of the blocks — wider than the east side, built for industry not just housing","The mix of surviving tenements and new construction"], then:"In 2007, Hell's Kitchen was mid-gentrification — still gritty in places, increasingly expensive.", now:"Now largely rebranded as 'Clinton.' Luxury towers have transformed the waterfront blocks." },
+      { num:2, title:"West 39th St — 10th & 11th Ave", address:"W 39th St between 10th & 11th Ave", duration:113, mp3:"hk-2_West_39th_St._Between_10th_and_11th_Avenues.mp3", coords:'40.7549,-74.0019', tags:['history','culture'], narrative:"<p>This stretch of 39th Street at the far western edge of the neighborhood represents the industrial backbone of Hell's Kitchen. The area was dominated by warehouses, garages, and the infrastructure serving the Hudson River piers.</p><p>The Hell's Kitchen of the late 19th and early 20th centuries was defined by the West Side freight railroad that ran along 11th Avenue — nicknamed 'Death Avenue' because of the frequency of pedestrian fatalities.</p>", pullQuote:"Death Avenue killed so many people they hired cowboys on horseback to ride ahead of the trains and warn pedestrians.", lookFor:["The remnants of industrial building stock — loading docks and freight doors","The High Line to the south — built on the elevated freight rail that replaced Death Avenue","The Hudson Yards towers visible from here"], then:"Industrial and warehouse district, some conversion to residential beginning.", now:"Rapidly redeveloping. Hudson Yards megaproject dominates the southern view." },
+      { num:3, title:"West 43rd St & 11th Ave", address:"W 43rd St & 11th Ave (Corner)", duration:110, mp3:"hk-3_West_43rd_St._and_11th_Avenue_Corner.mp3", coords:'40.7579,-74.0022', tags:['history'], narrative:"<p>The intersection of 43rd and 11th Avenue was deep in the territory of the Hudson Dusters, one of Hell's Kitchen's most notorious gangs of the early 20th century. The Dusters controlled the waterfront and much of the neighborhood's criminal activity from roughly 1890 to 1916.</p><p>The gang era that defined Hell's Kitchen lasted from roughly the Civil War through Prohibition, when organized crime became more sophisticated and the old street gangs were absorbed or eliminated.</p>", pullQuote:"The Hudson Dusters controlled this corner. Then the Westies controlled this corner. Now condos control this corner.", lookFor:["The remaining pre-war tenement buildings on 43rd Street","The scale of 11th Avenue — built to accommodate freight, not pedestrians","The contrast between the old building stock and new development"], then:"Still very working class, some longtime Irish-American families remaining.", now:"Gentrification has largely completed in this block. Demographics transformed." },
+      { num:4, title:"West 43rd St & 10th Ave", address:"W 43rd St & 10th Ave (Corner)", duration:85, mp3:"hk-4_West_43rd_St._and_10th_Avenue_Corner.mp3", coords:'40.7579,-74.0003', tags:['history','culture'], narrative:"<p>Tenth Avenue in Hell's Kitchen was the neighborhood's main commercial artery — the strip where businesses, bars, and social clubs concentrated. The Irish identity of Hell's Kitchen was centered here, particularly from the late 19th century through the mid-20th century.</p><p>The neighborhood's Irish community produced politicians, cops, and criminals in roughly equal measure — and often the lines between those categories were blurry.</p>", pullQuote:"In Hell's Kitchen, the precinct house and the gang clubhouse were often on the same block.", lookFor:["The surviving bar and restaurant stock on 10th Avenue","Any remaining Irish social clubs or associations","The church spires — Catholic institutions anchored this neighborhood"], then:"Still some Irish-American identity visible in bars and social institutions.", now:"The Irish character has largely dispersed. The bars remain but serve a different clientele." },
+      { num:5, title:"West 44th St — 9th & 10th Ave", address:"W 44th St between 9th & 10th Ave", duration:45, mp3:"hk-5_West_44th_St._Between_9th_and_10th_Avenues.mp3", coords:'40.7589,-73.9991', tags:['culture','history'], narrative:"<p>44th Street between Ninth and Tenth is in the zone where Hell's Kitchen bleeds into the Theater District. The workers who built and ran Broadway — stagehands, chorus members, musicians, costume makers — lived in Hell's Kitchen precisely because it was cheap and close.</p><p>The relationship between this gritty working-class neighborhood and the glamour of Broadway one block east was one of New York's great ironies.</p>", pullQuote:"The people who made Broadway magic lived in Hell's Kitchen because they couldn't afford anything else.", lookFor:["The density of the block — packed tenements reflecting the old working-class population","The proximity to the Theater District — Broadway is one avenue east","Restaurants and bars that cater to theater workers"], then:"Theater industry workers still lived here in significant numbers.", now:"Rents have pushed most theater workers further out. The neighborhood serves different residents." },
+      { num:6, title:"330 West 45th St", address:"330 W 45th St between 8th & 9th Ave", duration:99, mp3:"hk-6_330_West_45th_St._Between_8th_and_9th_Avenues.mp3", coords:'40.7597,-73.9975', tags:['history','architecture'], narrative:"<p>330 West 45th Street represents the Hell's Kitchen residential stock at its most typical — a pre-war tenement building housing dozens of families in the working-class tradition of the neighborhood. Buildings like this one were home to the longshoremen, truckers, and trade workers who kept Manhattan's economy running from the docks and freight yards.</p>", pullQuote:"These buildings weren't built for beauty. They were built to pack in as many workers as possible.", lookFor:["The building's fire escapes — required by law after the Triangle Shirtwaist fire","The scale of the apartments visible from the street — typically 3-4 rooms","The stoops and entry ways — centers of social life in tenement culture"], then:"Many units still rent-stabilized, long-term residents in place.", now:"Ongoing battles over stabilization as buildings sell to new owners." },
+      { num:7, title:"West 46th St — 8th & 9th Ave", address:"W 46th St between 8th & 9th Ave", duration:89, mp3:"hk-7_West_46th_St._Between_8th_and_9th_Avenues.mp3", coords:'40.7605,-73.9967', tags:['culture','history'], narrative:"<p>Restaurant Row — the stretch of 46th Street between Eighth and Ninth Avenues — has been lined with restaurants since at least the 1930s, when it became a pre-theater dining destination. The concentration of eateries here fed the theatergoers pouring out of Broadway houses before and after curtain.</p><p>The block represents a more commercial, tourist-facing face of the neighborhood that has always coexisted with the residential working-class streets behind it.</p>", pullQuote:"Restaurant Row fed Broadway. Broadway fed the world. Hell's Kitchen fed Restaurant Row.", lookFor:["The density of restaurants — still one of the highest concentrations in Manhattan","Pre-theater crowds if you're here in early evening","The contrast with the residential streets one block north or south"], then:"Restaurant Row still primarily serving theater crowds, some long-running institutions.", now:"Several longtime restaurants have closed. The block still functions as a dining destination." },
+      { num:8, title:"West 46th St — 9th & 10th Ave", address:"W 46th St between 9th & 10th Ave", duration:100, mp3:"hk-8_West_46th_St._Between_9th_and_10th_Avenues.mp3", coords:'40.7605,-73.9985', tags:['culture','history'], narrative:"<p>Moving west from Restaurant Row, 46th Street shifts back into residential Hell's Kitchen. This stretch housed much of the neighborhood's population during the gang era of the early 20th century, when the Westies — the Irish-American mob that controlled Hell's Kitchen from the 1960s through the 1980s — operated throughout these blocks.</p>", pullQuote:"The Westies were the last of the old neighborhood gangs. They were also among the most violent.", lookFor:["The transition from commercial to residential as you move west","Pre-war apartment buildings from the 1900s-1920s","The neighborhood's characteristic building scale — 5-6 story walkups"], then:"The Westies had been broken up by the late 1980s but their legacy was still recent memory.", now:"The gang history is forgotten by most current residents. The neighborhood has fully turned over." },
+      { num:9, title:"West 46th St & 11th Ave", address:"W 46th St & 11th Ave (Corner)", duration:98, mp3:"hk-9_West_46th_St._and_11th_Avenue_Corner.mp3", coords:'40.7605,-74.0005', tags:['history'], narrative:"<p>At 46th and 11th Avenue you're at the far western edge of Hell's Kitchen, close to the Hudson River piers that defined the neighborhood's economic life for generations. The longshoremen who worked these piers lived in the surrounding blocks, and the docks shaped the neighborhood's culture, politics, and crime.</p><p>The waterfront has been completely transformed — the piers now host the Intrepid museum, a cruise ship terminal, and Hudson River Park.</p>", pullQuote:"The docks are gone. The longshoremen are gone. The neighborhood they built is almost gone.", lookFor:["The Hudson River, visible to the west","The scale of the blocks — built for industrial traffic","The surviving tenements that housed the dock workers"], then:"The piers were still partly functional, some industrial use remaining.", now:"Fully transformed to recreational and tourist use. The working waterfront is a memory." },
+      { num:10, title:"747 10th Ave — 50th & 51st St", address:"747 10th Ave between W 50th & 51st St", duration:67, mp3:"hk-10_747_10th_Avenue_Between_W._50th_and_51st_St..mp3", coords:'40.7634,-73.9939', tags:['history','architecture'], narrative:"<p>The upper blocks of Hell's Kitchen around 50th Street were historically the northern edge of the neighborhood's densest settlement, transitioning toward the more commercial stretch of Tenth Avenue that served the theater and restaurant trade.</p><p>This section of the neighborhood saw some of the earliest gentrification pressure, as proximity to Columbus Circle and the Time Warner Center made the blocks attractive to higher-income residents.</p>", pullQuote:"Gentrification moves in from the edges. By the time you notice it at the center, it's already done.", lookFor:["The building at 747 — typical of the neighborhood's surviving pre-war stock","The mixed use of the avenue — restaurants, services, residential","The view south toward Midtown towers"], then:"Early signs of gentrification — some renovation, some new residents alongside long-timers.", now:"Fully gentrified. Property values have multiplied several times over since 2007." },
+      { num:11, title:"421 West 54th St", address:"421 W 54th St between 9th & 10th Ave", duration:66, mp3:"hk-11_421_West_54th_St._Between_9th_and_10th_Avenues.mp3", coords:'40.7645,-73.9934', tags:['history','architecture'], narrative:"<p>421 West 54th Street brings us to the northern reaches of Hell's Kitchen, where the neighborhood's character begins to shift toward the more mixed-use blocks approaching 57th Street and the edge of the Upper West Side.</p><p>The tour ends here — but the story of Hell's Kitchen continues in the ongoing tension between its working-class history and the forces reshaping it into something more expensive and less interesting.</p>", pullQuote:"Every New York neighborhood gets gentrified eventually. Hell's Kitchen just fought it harder than most.", lookFor:["The surviving pre-war residential buildings on 54th Street","The contrast between old tenements and newer construction","The church at the end of the block — Catholic institutions outlasted everything else"], then:"Northern Hell's Kitchen still had significant working-class population in 2007.", now:"The transformation is largely complete. The name 'Clinton' has stuck in real estate listings." }
+    ]
+  },
+  {
+    id: 'brooklyn-underground',
+    name: 'Brooklyn Underground',
+    color: '#2d5a27',
+    intro: 'A 2007 NYT audio tour through Brooklyn Heights and beyond — tracing the abolitionist history, literary legacy, and radical past of one of NYC\'s oldest and most storied neighborhoods.',
+    stops: [
+      { num:1, title:'Introduction: Brooklyn Underground', address:'Starting Point — Brooklyn Heights', duration:82, mp3:'1-Intro_Brooklyn_Underground.mp3', coords:'40.6960,-73.9937', tags:['history','culture'], narrative:'<p>Brooklyn Underground explores the abolitionist history, literary legacy, and radical past hidden beneath Brooklyn Heights\' genteel brownstone surface. This neighborhood was a major stop on the Underground Railroad — a fact that its current real estate prices tend to obscure.</p><p>The tour moves through Brooklyn Heights and into the neighborhoods beyond, tracing a history of resistance and radical politics that predates the Civil War.</p>', pullQuote:'Brooklyn Heights looks like old money. Its history is about something more interesting than that.', lookFor:['The brownstone rowhouses — some of the oldest surviving residential architecture in NYC','The proximity to the waterfront — Brooklyn Heights sits above the old docks','The mix of 19th century and 20th century building stock'], then:'Brooklyn Heights was already expensive in 2007 but still had a diverse mix of residents.', now:'Among the most expensive neighborhoods in Brooklyn. The diversity has largely been priced out.' },
+      { num:2, title:'Brooklyn Heights Promenade', address:'Brooklyn Heights Promenade', duration:120, mp3:'2-Brooklyn_Heights_Promenade.mp3', coords:'40.6962,-73.9992', tags:['history','architecture'], narrative:'<p>The Brooklyn Heights Promenade offers one of the great views in New York — the Lower Manhattan skyline across the East River. But the promenade itself is built over the Brooklyn-Queens Expressway, which Robert Moses drove through the neighborhood in the 1950s over fierce local opposition.</p><p>The battle over the BQE was one of the first successful fights against Moses\' highway building, partially. The compromise was to bury the highway and build the promenade on top — but the highway was still built.</p>', pullQuote:'The promenade is beautiful. It\'s also built on top of a compromise the neighborhood lost.', lookFor:['The Manhattan skyline — note which buildings are pre and post-WWII','The BQE below — you can hear it if you stand near the railing','The old warehouses along the waterfront, some converted to luxury housing'], then:'The Promenade was a beloved neighborhood amenity, views unchanged.', now:'Views partially changed by new construction in lower Manhattan and Brooklyn. BQE still below.' },
+      { num:3, title:'Plymouth Church of the Pilgrims', address:'Plymouth Church, Orange St', duration:95, mp3:'3-Plymouth_Church.mp3', coords:'40.6977,-73.9922', tags:['history','politics'], narrative:'<p>Plymouth Church on Orange Street was the most famous abolitionist church in America. Henry Ward Beecher — brother of Harriet Beecher Stowe — preached here from 1847 to 1887, turning the church into a national platform for the anti-slavery cause.</p><p>Beecher staged mock slave auctions in the church to raise money to purchase enslaved people\'s freedom. Abraham Lincoln attended services here. The church was a key station on the Underground Railroad.</p>', pullQuote:'Henry Ward Beecher turned this church into the most important abolitionist pulpit in America.', lookFor:['The church\'s remarkably plain exterior — a deliberate statement of simplicity','The memorial garden with a statue of Beecher','The tunnel entrance that was used by freedom seekers — now sealed but marked'], then:'A landmark church, well-known for its history but not heavily visited.', now:'A National Historic Landmark. Tours available. The abolitionist history is well-documented.' },
+      { num:4, title:'Duffield Street — Abolitionist Place', address:'Duffield St, Brooklyn', duration:140, mp3:'4-Abolitionist_Place.mp3', coords:'40.6928,-73.9851', tags:['history','politics'], narrative:'<p>Duffield Street is officially designated "Abolitionist Place" — a recognition of its role as a corridor for freedom seekers moving through Brooklyn on the Underground Railroad. The Thomas and Harriet Truesdell house at 227 Duffield is believed to have been a key station on the Railroad.</p><p>The designation came after a long community fight to prevent the house\'s demolition for a parking garage — a battle that pitted the neighborhood\'s Black community against developers and city planners.</p>', pullQuote:'Duffield Street was renamed to remember something the city spent a long time trying to forget.', lookFor:['The Truesdell house at 227 Duffield — look for the historical markers','The street\'s proximity to the old industrial waterfront — freedom seekers came by boat','The contrast between this quiet street and the busy downtown Brooklyn blocks around it'], then:'The renaming was recent — the abolitionist history was just beginning to be publicly recognized.', now:'The history is better documented and recognized. The neighborhood continues to change rapidly.' },
+      { num:5, title:'Weeksville Heritage Center', address:'Weeksville, Hunterfly Road', duration:110, mp3:'5-Weeksville.mp3', coords:'40.6720,-73.9253', tags:['history','culture'], narrative:'<p>Weeksville was a free Black community established in 1838 — one of the earliest and largest free Black settlements in the United States. At its peak before the Civil War, Weeksville had its own newspaper, school, church, and homes for the elderly.</p><p>The community survived the Civil War draft riots of 1863, when white mobs burned Black neighborhoods across Brooklyn and Manhattan. It was largely forgotten by the mid-20th century until researchers rediscovered the Hunterfly Road Houses in 1968.</p>', pullQuote:'Weeksville was erased from the map for nearly a century. The people who rediscovered it had to fight to preserve it.', lookFor:['The Hunterfly Road Houses — four surviving 19th century wooden houses','The Heritage Center building — opened in 2013','The contrast between the historic houses and the surrounding urban fabric'], then:'The Weeksville Heritage Center was under development — the community was fighting for resources.', now:'The Heritage Center is open and active, one of the most important African-American heritage sites in NYC.' }
+    ]
+  },
+  {
+    id: 'barnum',
+    name: "P.T. Barnum's Manhattan",
+    color: '#8a5a00',
+    intro: "A 2007 NYT audio tour tracing P.T. Barnum's footprint across lower Manhattan — from his first American Museum to his later ventures, exploring how the great showman shaped New York's identity as a city of spectacle.",
+    stops: [
+      { num:1, title:"Introduction: P.T. Barnum's Manhattan", address:'Starting Point — Lower Manhattan', duration:95, mp3:'1-PTBarnum-Introduction.mp3', coords:'40.7128,-74.0060', tags:['history','culture'], narrative:"<p>P.T. Barnum arrived in New York in 1835 and proceeded to transform the city — and American popular culture — over the next half century. His genius was understanding that Americans wanted to be fooled, as long as the fooling was entertaining enough.</p><p>Barnum's Manhattan tour traces his locations from the original American Museum on Broadway to his later circus venues, mapping the geography of spectacle onto the city's streets.</p>", pullQuote:"There's a sucker born every minute. Barnum probably never said it, but it sounds right for the city he helped create.", lookFor:['The scale of lower Broadway — Barnum understood that scale was spectacle','The mix of commercial and cultural buildings that defined 19th century New York','The sites of buildings that no longer exist — Barnum\'s world was largely demolished'], then:'Lower Manhattan in 2007 was post-9/11 reconstruction, deeply changed.', now:'Continued transformation. The Financial District has added significant residential population.' },
+      { num:2, title:'Broadway & Prince Streets', address:'Broadway & Prince St', duration:88, mp3:'2-PTBarnum-BroadwayPrince.mp3', coords:'40.7230,-74.0001', tags:['history','culture'], narrative:"<p>The stretch of Broadway around Prince Street was the heart of Barnum's early operations. His American Museum, located at Broadway and Ann Street (a few blocks south), was the most visited attraction in the United States in the 1840s and 1850s — drawing 38 million visitors over its 25-year run.</p><p>Barnum understood Broadway as a theater of commerce and spectacle — a stage on which he could present his attractions to maximum effect.</p>", pullQuote:"Barnum's American Museum got 38 million visitors. Disney World didn't exist yet. This was the original.", lookFor:['The scale and character of Broadway — unchanged as a commercial artery','SoHo\'s cast-iron architecture, built during Barnum\'s era','The street life — Barnum understood that the street itself was entertainment'], then:'SoHo was a retail and art district, beginning to become more upscale.', now:'SoHo is now primarily luxury retail. The creative character that defined it for decades has moved on.' },
+      { num:3, title:'Broadway & Vescey Streets', address:'Broadway & Vescey St', duration:102, mp3:'3-PTBarnum-BroadwayVescey.mp3', coords:'40.7127,-74.0090', tags:['history'], narrative:"<p>Broadway and Vescey Street puts us at the edge of the original Barnum territory — close to City Hall Park where Barnum staged outdoor spectacles to drive traffic to his nearby museum. The intersection of commerce, spectacle, and public space that Barnum perfected here became the template for American entertainment.</p>", pullQuote:"Barnum invented the press release, the celebrity interview, and the publicity stunt. Everything else followed.", lookFor:['City Hall Park nearby — where Barnum staged outdoor events','The financial district architecture — Barnum operated in the richest part of America\'s richest city','The ongoing construction and change — New York has always been demolishing itself'], then:'The financial district was still recovering from 9/11 — the World Trade Center site was being rebuilt.', now:'One World Trade Center is complete. The area has fully rebuilt and densified.' },
+      { num:4, title:'Castle Clinton', address:'Castle Clinton, Battery Park', duration:115, mp3:'4-PTBarnum-CastleClinton.mp3', coords:'40.7034,-74.0170', tags:['history','architecture'], narrative:"<p>Castle Clinton — originally built as a fort in 1811, later an entertainment venue, then the city's immigration processing center before Ellis Island — is one of New York's most layered historic sites. Barnum rented the building in 1850 to present Jenny Lind, the 'Swedish Nightingale,' in concerts that became among the most famous events in American entertainment history.</p><p>Barnum had never heard Lind sing when he arranged her American tour. He bought the hype and then created more of it — spending $150,000 on promotion before she arrived.</p>", pullQuote:"Barnum spent $150,000 promoting Jenny Lind before she arrived. He'd never heard her sing.", lookFor:['The fort itself — one of the oldest surviving structures in Manhattan','Battery Park and the harbor — the arrival point for millions of immigrants','The Statue of Liberty in the distance'], then:'A well-visited tourist site and National Monument.', now:'Still a National Monument. The surrounding area has been heavily developed with luxury towers.' },
+      { num:5, title:'Grace Episcopal Church', address:'Grace Church, Broadway & 10th St', duration:88, mp3:'5-PTBarnum-GraceEpiscopalChurch.mp3', coords:'40.7322,-73.9908', tags:['history','architecture'], narrative:"<p>Grace Episcopal Church on Broadway at 10th Street is one of New York's most beautiful Gothic Revival buildings — and the site of one of Barnum's greatest publicity stunts. In 1863, Barnum staged the wedding of General Tom Thumb (Charles Stratton) and Lavinia Warren at Grace Church, turning it into a national media event attended by 2,000 guests and covered by every major newspaper.</p><p>The wedding perfectly captured Barnum's genius: using a venerable institution to legitimize his spectacle, while using his spectacle to make the institution more interesting.</p>", pullQuote:"Barnum used Grace Church. Grace Church used Barnum. New York got a great show either way.", lookFor:['The church\'s Gothic Revival architecture — James Renwick, same architect as St. Patrick\'s Cathedral','The churchyard and its 19th century graves','The way the church anchors the Broadway streetscape at the curve'], then:'A landmark church, active congregation, well-maintained.', now:'Still active. A National Historic Landmark. The surrounding neighborhood has gentrified significantly.' },
+      { num:6, title:'Madison Square Park', address:'Madison Square Park, 23rd St', duration:110, mp3:'6-PTBarnum-MadisonSquarePark.mp3', coords:'40.7429,-73.9884', tags:['history','culture'], narrative:"<p>Madison Square Park was the center of New York's fashionable life in the 1870s and 1880s — and the location of Barnum's second great museum after his original burned down. Barnum's Roman Hippodrome, which later became Madison Square Garden, was the largest entertainment venue in the country.</p><p>The park also hosted the arm and torch of the Statue of Liberty — displayed here to raise funds for the pedestal before the statue's completion in 1886.</p>", pullQuote:"The arm and torch of the Statue of Liberty stood in Madison Square Park for years, waiting for the money to build the pedestal.", lookFor:['The Flatiron Building visible to the south — built 1902, in Barnum\'s later era','The park itself — completely renovated in the early 2000s, now a model urban park','The Shake Shack — a 21st century version of public park refreshment'], then:'Madison Square Park had been renovated and was a successful example of park restoration.', now:'One of the best-maintained small parks in Manhattan. The surrounding area is now "NoMad."' }
+    ]
+  },
+  {
+    id: 'ues',
+    name: 'Upper East Side Elite',
+    color: '#4a1a5c',
+    intro: 'A 2007 NYT audio tour through the Upper East Side — exploring the architecture, institutions, and social history of one of the wealthiest urban corridors in the world, from the Gilded Age mansions of Fifth Avenue to the tenements of Yorkville.',
+    stops: [
+      { num:1, title:'Introduction: Upper East Side Elite', address:'Starting Point — 5th Ave & 65th St', duration:102, mp3:'ues-1B.mp3', coords:'40.7666,-73.9718', tags:['history','architecture'], narrative:"<p>The Upper East Side's wealth is so concentrated and so visible that it's easy to miss the neighborhood's complexity. Fifth Avenue between 60th and 96th Streets is 'Museum Mile' — home to the Met, the Guggenheim, the Frick, and a dozen other major institutions. But a few blocks east, Yorkville was working-class German and Hungarian immigrant territory well into the mid-20th century.</p><p>This tour moves through both worlds — the Gilded Age palaces and the immigrant tenements — and asks what it means that they occupied the same neighborhood.</p>", pullQuote:"The Upper East Side put the Gilded Age mansions right next to the immigrant tenements. Both sides tried to ignore each other.", lookFor:['The contrast between Fifth Avenue and the avenues east of Lexington','The scale of the buildings — the UES has some of the largest prewar apartments in Manhattan','Museum Mile markers along Fifth Avenue'], then:'The UES was already among the most expensive zip codes in the country.', now:'Still among the most expensive, though some younger residents have moved to Brooklyn and downtown.' },
+      { num:2, title:'Temple Emmanu-El — 5th Ave & 65th St', address:'Fifth Ave & E 65th St', duration:205, mp3:'ues-2.mp3', coords:'40.7666,-73.9718', tags:['history','architecture'], narrative:"<p>Temple Emmanu-El at Fifth Avenue and 65th Street is the largest Reform Jewish synagogue in the world — a Romanesque Revival building that seats 2,500 people and dominates the block. Built in 1929, it represents the arrival of New York's Jewish elite onto Fifth Avenue, which had previously been the exclusive domain of old Protestant money.</p><p>The Harmonie Club, the first Jewish social club in the city, sits across the street — a reminder of how systematically excluded Jewish New Yorkers were from the WASP institutions of the Gilded Age.</p>", pullQuote:"Temple Emmanu-El was built on Fifth Avenue to say: we are here, we are staying, and we can build bigger than you.", lookFor:['The temple\'s massive scale — it dominates the block intentionally','The Harmonie Club across the street','The contrast with the Protestant churches further along Fifth Avenue'], then:'A major landmark, well-maintained, active congregation.', now:'Still active. One of the most architecturally significant religious buildings in NYC.' },
+      { num:3, title:'Ukrainian Institute — 5th Ave & 79th St', address:'Fifth Ave & E 79th St', duration:82, mp3:'ues-3.mp3', coords:'40.7764,-73.9641', tags:['history','architecture'], narrative:"<p>The Ukrainian Institute of America occupies a neo-Gothic mansion at Fifth Avenue and 79th Street — one of the few surviving Gilded Age mansions on this stretch of Fifth Avenue, most of which were demolished and replaced with apartment buildings in the 1920s and 1930s.</p><p>The Ukrainian connection is a reminder that the UES has layers of immigrant history that its current Waspy reputation tends to obscure. Ukrainian and Hungarian immigrants settled in Yorkville, just east of here.</p>", pullQuote:"Most of the Gilded Age mansions on Fifth Avenue were torn down within a generation. This one survived by becoming something useful.", lookFor:['The mansion\'s Gothic Revival details — intricate stonework and turrets','The contrast with the apartment buildings that replaced similar mansions nearby','The entrance — look for Ukrainian cultural programming signs'], then:'Active cultural institution, one of few surviving Fifth Avenue mansions.', now:'Still active. The Ukrainian community in NYC has grown since 2022.' },
+      { num:4, title:'Cooper-Hewitt Design Museum — 5th Ave & 91st St', address:'Fifth Ave & E 91st St', duration:78, mp3:'ues-4.mp3', coords:'40.7834,-73.9573', tags:['history','architecture'], narrative:"<p>The Cooper-Hewitt, Smithsonian Design Museum occupies the Carnegie Mansion — Andrew Carnegie's Fifth Avenue home, built in 1902. Carnegie deliberately built in what was then the unfashionable northern end of Fifth Avenue, famously saying he would make it the most fashionable in a few years.</p><p>He was right. The mansion itself is one of the finest surviving examples of Gilded Age residential architecture in the city.</p>", pullQuote:"Carnegie moved to the unfashionable end of Fifth Avenue and told everyone it was about to become fashionable. He was right.", lookFor:['The mansion\'s Georgian Revival facade','The garden — rare surviving private garden on Fifth Avenue','The museum\'s interactive design exhibitions inside'], then:'An active Smithsonian museum, one of the anchors of Museum Mile.', now:'Underwent major renovation 2011-2014. Reopened with new interactive exhibitions.' },
+      { num:5, title:'Gracie Mansion — East End Ave & 88th St', address:'East End Ave & E 88th St', duration:242, mp3:'ues-5.mp3', coords:'40.7764,-73.9437', tags:['history','architecture'], narrative:"<p>Gracie Mansion, the official residence of New York City's mayor, is a Federal-style country house built in 1799 on a bluff overlooking the East River. Archibald Gracie, a prosperous Scottish-born merchant, built it as a summer retreat when this area was far north of the city.</p><p>The city took it over for unpaid taxes in 1887, and it became the mayoral residence in 1942 under Fiorello LaGuardia. Every mayor has lived here since, except Michael Bloomberg, who preferred his own townhouse.</p>", pullQuote:"Every mayor has lived in Gracie Mansion since LaGuardia. Except Bloomberg, who had nicer real estate.", lookFor:['The mansion\'s Federal style — one of the few surviving early 19th century houses in Manhattan','Carl Schurz Park surrounding the mansion','The East River view — this is why Gracie built here'], then:'Active mayoral residence. Bloomberg was mayor but living elsewhere.', now:'Still the mayoral residence. The park was renovated and is one of the best maintained in the city.' },
+      { num:6, title:'Germantown — 2nd Ave, 85th-86th St', address:'2nd Ave between E 85th & E 86th St', duration:234, mp3:'ues-6.mp3', coords:'40.7764,-73.9551', tags:['history','culture'], narrative:"<p>Yorkville — roughly 79th to 96th Street east of Lexington — was German and Hungarian immigrant territory from the mid-19th century through the mid-20th century. At its peak, 'Kleindeutschland' (Little Germany) extended from the Lower East Side up through this area, with its own newspapers, beer halls, social clubs, and political organizations.</p><p>The Slocum disaster of 1904 — when a steamboat caught fire and killed over 1,000 German-American passengers — devastated the community and accelerated its dispersal. Yorkville held on longer, but by the 1970s the German character was largely gone.</p>", pullQuote:"The General Slocum disaster killed more New Yorkers than 9/11. Almost no one remembers it today.", lookFor:['Schaller & Weber — a surviving German butcher shop and deli','The Heidelberg Restaurant — or its former location','The Ruppert Brewery site nearby — once one of the largest in the city'], then:'A few surviving German institutions — Schaller & Weber, Heidelberg Restaurant, some social clubs.', now:'The German character is almost entirely gone. Schaller & Weber still operates, barely.' },
+      { num:7, title:'Cherokee Flats — 77th St & East End Ave', address:'E 77th St & East End Ave / John Jay Park', duration:154, mp3:'ues-7.mp3', coords:'40.7728,-73.9455', tags:['history','architecture'], narrative:"<p>The Cherokee Apartments at 77th Street and East End Avenue are one of the most significant examples of progressive housing reform in American history. Built in 1911, they were designed with tuberculosis prevention in mind — every room has cross-ventilation, and the buildings are oriented to maximize sunlight and air circulation.</p><p>The Cherokee represented the reformers' conviction that poor housing caused disease, and that better architecture could improve public health. They were right — tuberculosis rates dropped dramatically as housing conditions improved.</p>", pullQuote:"The Cherokee Apartments were built to fight tuberculosis. Good architecture saved lives.", lookFor:['The buildings\' distinctive orientation and courtyard design','The light and air between buildings — deliberately maximized','John Jay Park and the East River behind it'], then:'A well-maintained residential complex, recognized as architecturally significant.', now:'A landmark building. The public health thinking behind it is now mainstream urban planning doctrine.' },
+      { num:8, title:'E. 70th St — Lexington & Park Ave', address:'E 70th St between Lexington & Park Ave', duration:78, mp3:'ues-8.mp3', coords:'40.7695,-73.9627', tags:['architecture','history'], narrative:"<p>East 70th Street between Lexington and Park is one of the finest residential blocks in Manhattan — a street of limestone and brick townhouses and apartment buildings representing the full spectrum of early 20th century residential architecture. The Frick Collection is nearby at 70th and Fifth.</p><p>This stretch of the UES represents the neighborhood at its most architecturally coherent — a streetscape that has changed remarkably little in a century.</p>", pullQuote:"Some blocks of the Upper East Side look almost exactly as they did in 1925. This is one of them.", lookFor:['The consistency of the building heights and materials','The doorman buildings — a UES signature','The Frick Collection at 70th and Fifth — one block west'], then:'A prime UES residential block, stable and expensive.', now:'Still among the most expensive residential real estate in Manhattan.' },
+      { num:9, title:'65th St — Lexington & 3rd Ave', address:'E 65th St between Lexington & 3rd Ave', duration:73, mp3:'ues-9.mp3', coords:'40.7658,-73.9659', tags:['history','culture'], narrative:"<p>65th Street between Lexington and Third Avenue represents the middle UES — neither the grand Fifth Avenue corridor nor the working-class Yorkville blocks to the east. This stretch housed the upper-middle class professionals who served the neighborhood's wealthy: doctors, lawyers, architects, and the managers of the great fortunes.</p>", pullQuote:"The Upper East Side needed people to manage all that money. This is where they lived.", lookFor:['The prewar apartment buildings — typically 10-15 stories, doorman buildings','The small businesses that serve the residential population','The absence of the grand gestures of Fifth Avenue — this is the working UES'], then:'A stable residential block, good schools nearby, typical UES upper-middle class character.', now:'Largely unchanged in character, though prices have increased substantially.' },
+      { num:10, title:'E. 63rd St — Lexington & 3rd Ave', address:'E 63rd St between Lexington & 3rd Ave', duration:79, mp3:'ues-10.mp3', coords:'40.7638,-73.9668', tags:['history','culture'], narrative:"<p>The tour ends at 63rd Street, the southern edge of the Upper East Side proper, where the neighborhood meets the commercial energy of the 60s crosstown streets. From here you can see both the UES's residential character to the north and the transition to Midtown's commercial energy to the south.</p><p>The Upper East Side's story is ultimately about the persistence of wealth — how the institutions, architecture, and social patterns of the Gilded Age have survived more or less intact into the 21st century, insulated by money from the pressures that transformed every other Manhattan neighborhood.</p>", pullQuote:"Money preserves neighborhoods. The Upper East Side is proof.", lookFor:['The transition to Midtown commercial character at 60th Street','The density of cultural institutions — more museums per block than anywhere in the world','The contrast with where you started — the neighborhood\'s wealth is consistent throughout'], then:'The southernmost UES blocks, transitioning to the more commercial 60s.', now:'The area has densified with new luxury towers. The character is more mixed than the deeper UES.' }
+    ]
+  }
+];
+
+let currentTourIdx = 0;
+let currentStop = 0;
+let tocVisible = false;
+const visited = {};
+TOURS.forEach(t => { visited[t.id] = new Set(); });
+
+function currentTour() { return TOURS[currentTourIdx]; }
+
+function formatTime(s) {
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function buildTourTabs() {
+  const sel = document.getElementById('tourSelector');
+  sel.innerHTML = TOURS.map((t,i) => `
+    <div class="tour-tab ${i===currentTourIdx?'active':''}" onclick="switchTour(${i})" style="${i===currentTourIdx?'background:'+t.color+';border-color:'+t.color:''}">
+      ${t.name}
+    </div>
+  `).join('');
+}
+
+function switchTour(idx) {
+  currentTourIdx = idx;
+  currentStop = 0;
+  tocVisible = false;
+  // Pause all audio
+  document.querySelectorAll('audio').forEach(a => a.pause());
+  buildTourTabs();
+  renderStops();
+  goToStop(0);
+}
+
+function buildStopCard(stop, tourId, color, tour) {
+  const mapSrc = `https://maps.google.com/maps?q=${stop.coords}&z=17&output=embed`;
+  const mp3url = BASE + stop.mp3;
+  const tagsHtml = stop.tags.map(t => `<span class="tag tag-${t}">${t}</span>`).join('');
+  const photo = PHOTOS[`${tourId}-${stop.num}`] || null;
+  const photoHtml = photo ? `
+    <div class="photo-section" id="photosec-${tourId}-${stop.num}">
+      <img class="stop-photo" src="${photo.url}" alt="${photo.caption}"
+           loading="lazy"
+           onerror="document.getElementById('photosec-${tourId}-${stop.num}').classList.add('photo-hidden')">
+      <div class="photo-caption">${photo.caption} · ${photo.credit}</div>
+    </div>` : '';
+
+  // Walk time to next stop
+  const nextStop = tour ? tour.stops[stop.num] : null;
+  const walkHtml = nextStop ? `
+    <div class="walk-time-bar">
+      🚶 <span id="walk-${tourId}-${stop.num}">calculating...</span> to next stop
+    </div>` : '';
+
+  return `
+  <div class="stop-card" id="stop-${tourId}-${stop.num}">
+    <div class="stop-header">
+      <div class="stop-number-line">
+        <span class="stop-num">${String(stop.num).padStart(2,'0')}</span>
+        <span class="stop-label">Stop · ${formatTime(stop.duration)} audio</span>
+      </div>
+      <div class="stop-title">${stop.title}</div>
+      <div class="stop-address" style="color:${color}">${stop.address}</div>
+    </div>
+    ${photoHtml}
+    <div class="audio-section">
+      <div class="audio-label">Original NYT Audio · 2007</div>
+      <audio id="audio-${tourId}-${stop.num}" src="${mp3url}" preload="none"></audio>
+      <div class="audio-player-custom">
+        <button class="play-btn" id="playBtn-${tourId}-${stop.num}" style="background:${color}" onclick="togglePlay('${tourId}',${stop.num})">▶</button>
+        <div class="audio-timeline">
+          <div class="timeline-bar" id="bar-${tourId}-${stop.num}" onclick="seekAudio(event,'${tourId}',${stop.num})">
+            <div class="timeline-fill" id="fill-${tourId}-${stop.num}" style="width:0%;background:${color}"></div>
+          </div>
+          <div class="time-display">
+            <span id="cur-${tourId}-${stop.num}">0:00</span>
+            <span>${formatTime(stop.duration)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="transcript-section">
+      <button class="transcript-toggle" onclick="toggleTranscript('${tourId}',${stop.num})">Show Transcript</button>
+      <div class="transcript-body" id="transcript-${tourId}-${stop.num}">
+        <div class="transcript-note">Auto-generated transcript · May contain errors</div>
+        ${stop.transcript || '<p>Transcript not yet available for this stop. Play the audio above.</p>'}
+      </div>
+    </div>
+    ${walkHtml}
+    <div class="map-section">
+      <div class="section-label">Location</div>
+      <iframe class="map-frame" src="${mapSrc}" allowfullscreen loading="lazy"></iframe>
+    </div>
+    <div class="narrative-section">
+      <div class="section-label">About This Stop</div>
+      <div class="narrative-text">
+        ${stop.narrative}
+        <div class="pull-quote" style="border-color:${color};color:${color}">${stop.pullQuote}</div>
+        <div class="tags">${tagsHtml}</div>
+      </div>
+    </div>
+    <div class="lookfor-section">
+      <div class="section-label">What to Look For</div>
+      <ul class="lookfor-items">${stop.lookFor.map(i=>`<li>${i}</li>`).join('')}</ul>
+    </div>
+    <div class="then-now">
+      <div class="section-label">Then &amp; Now</div>
+      <div class="then-now-grid">
+        <div class="then-col"><div class="then-now-label">2007 — Recorded</div><div class="then-now-text">${stop.then}</div></div>
+        <div class="now-col" style="background:${color}"><div class="then-now-label">Today</div><div class="then-now-text">${stop.now}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderStops() {
+  const tour = currentTour();
+  const container = document.getElementById('stopsContainer');
+  container.innerHTML = tour.stops.map(s => buildStopCard(s, tour.id, tour.color, tour)).join('');
+  // Compute walk times between consecutive stops
+  tour.stops.forEach((stop, i) => {
+    if (i < tour.stops.length - 1) {
+      const next = tour.stops[i + 1];
+      const el = document.getElementById(`walk-${tour.id}-${stop.num}`);
+      if (el) {
+        const mins = walkMinutes(stop.coords, next.coords);
+        el.textContent = `~${mins} min walk`;
+      }
+    }
+  });
+}
+
+function buildDots() {
+  const tour = currentTour();
+  const container = document.getElementById('stopDots');
+  container.innerHTML = tour.stops.map((s,i) => `
+    <div class="dot ${i===currentStop?'active':visited[tour.id].has(s.num)?'visited':''}"
+         style="${i===currentStop?'background:'+tour.color+';border-color:'+tour.color:''}"
+         onclick="goToStop(${i})" title="${s.title}"></div>
+  `).join('');
+}
+
+function updateProgress() {
+  const tour = currentTour();
+  const pct = ((currentStop+1)/tour.stops.length)*100;
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressFill').style.background = tour.color;
+  document.getElementById('stopCountLabel').textContent = `Stop ${currentStop+1} of ${tour.stops.length}`;
+  const stop = tour.stops[currentStop];
+  document.getElementById('navStopName').textContent = stop.title;
+  document.getElementById('navStopPos').textContent = `${currentStop+1} / ${tour.stops.length}`;
+  document.getElementById('prevBtn').disabled = currentStop===0;
+  document.getElementById('nextBtn').disabled = currentStop===tour.stops.length-1;
+  buildDots();
+}
+
+function goToStop(idx) {
+  const tour = currentTour();
+  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('active'));
+  document.getElementById('tocView').classList.remove('active');
+  tocVisible = false;
+  currentStop = idx;
+  visited[tour.id].add(tour.stops[idx].num);
+  document.getElementById(`stop-${tour.id}-${tour.stops[idx].num}`).classList.add('active');
+  updateProgress();
+  window.scrollTo(0,0);
+}
+
+function navigate(dir) {
+  const next = currentStop + dir;
+  if (next>=0 && next<currentTour().stops.length) goToStop(next);
+}
+
+function toggleTOC() {
+  tocVisible = !tocVisible;
+  const tour = currentTour();
+  document.querySelectorAll('.stop-card').forEach(el => el.classList.remove('active'));
+  const toc = document.getElementById('tocView');
+  if (tocVisible) {
+    document.getElementById('tocTitle').textContent = tour.name;
+    document.getElementById('tocIntro').textContent = tour.intro;
+    document.getElementById('tocList').innerHTML = tour.stops.map(s => `
+      <li class="toc-item" onclick="goToStop(${s.num-1})">
+        <span class="toc-num">${String(s.num).padStart(2,'0')}</span>
+        <div style="flex:1">
+          <div class="toc-item-title">${s.title}</div>
+          <div class="toc-item-addr" style="color:${tour.color}">${s.address}</div>
+        </div>
+        <span class="toc-dur">${formatTime(s.duration)}</span>
+      </li>
+    `).join('');
+    toc.classList.add('active');
+  } else {
+    toc.classList.remove('active');
+    document.getElementById(`stop-${tour.id}-${tour.stops[currentStop].num}`).classList.add('active');
+  }
+}
+
+function togglePlay(tourId, stopNum) {
+  const audio = document.getElementById(`audio-${tourId}-${stopNum}`);
+  const btn = document.getElementById(`playBtn-${tourId}-${stopNum}`);
+  document.querySelectorAll('audio').forEach(a => {
+    if (a!==audio && !a.paused) {
+      a.pause();
+      const parts = a.id.replace('audio-','').split('-');
+      const n = parts[parts.length-1];
+      const tid = parts.slice(0,-1).join('-');
+      const b = document.getElementById(`playBtn-${tid}-${n}`);
+      if (b) b.textContent = '▶';
+    }
+  });
+  if (audio.paused) {
+    audio.play();
+    btn.textContent = '⏸';
+  } else {
+    audio.pause();
+    btn.textContent = '▶';
+  }
+  audio.ontimeupdate = () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime/audio.duration)*100;
+    document.getElementById(`fill-${tourId}-${stopNum}`).style.width = pct+'%';
+    document.getElementById(`cur-${tourId}-${stopNum}`).textContent = formatTime(audio.currentTime);
+  };
+  audio.onended = () => {
+    btn.textContent = '▶';
+    document.getElementById(`fill-${tourId}-${stopNum}`).style.width = '0%';
+    document.getElementById(`cur-${tourId}-${stopNum}`).textContent = '0:00';
+  };
+}
+
+function seekAudio(event, tourId, stopNum) {
+  const audio = document.getElementById(`audio-${tourId}-${stopNum}`);
+  const bar = document.getElementById(`bar-${tourId}-${stopNum}`);
+  const rect = bar.getBoundingClientRect();
+  const pct = (event.clientX-rect.left)/rect.width;
+  if (audio.duration) {
+    audio.currentTime = pct*audio.duration;
+    document.getElementById(`fill-${tourId}-${stopNum}`).style.width = (pct*100)+'%';
+    document.getElementById(`cur-${tourId}-${stopNum}`).textContent = formatTime(audio.currentTime);
+  }
+}
+
+
+// HAVERSINE WALK TIME
+function haversine(coord1, coord2) {
+  const [lat1, lon1] = coord1.split(',').map(Number);
+  const [lat2, lon2] = coord2.split(',').map(Number);
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function walkMinutes(coord1, coord2) {
+  const meters = haversine(coord1, coord2) * 1.3; // walking factor
+  return Math.max(1, Math.round(meters / 83)); // 83m/min ≈ 3mph walk
+}
+
+// TRANSCRIPT TOGGLE
+function toggleTranscript(tourId, stopNum) {
+  const body = document.getElementById(`transcript-${tourId}-${stopNum}`);
+  const btn = body.previousElementSibling;
+  const isOpen = body.classList.toggle('open');
+  btn.textContent = isOpen ? 'Hide Transcript' : 'Show Transcript';
+}
+
+// START NEAR ME
+function startNearMe() {
+  const label = document.getElementById('nearmeLabel');
+  if (!navigator.geolocation) {
+    label.textContent = 'Geolocation not supported';
+    return;
+  }
+  label.textContent = 'Finding your location...';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const userCoords = `${pos.coords.latitude},${pos.coords.longitude}`;
+    const tour = currentTour();
+    let nearest = 0;
+    let minDist = Infinity;
+    tour.stops.forEach((stop, i) => {
+      const d = haversine(userCoords, stop.coords);
+      if (d < minDist) { minDist = d; nearest = i; }
+    });
+    const stop = tour.stops[nearest];
+    const distM = Math.round(minDist);
+    const distStr = distM < 1000 ? `${distM}m` : `${(distM/1000).toFixed(1)}km`;
+    label.textContent = `Nearest: ${stop.title} (${distStr})`;
+    goToStop(nearest);
+  }, () => {
+    label.textContent = 'Location access denied';
+  });
+}
+
+// LOCALSTORAGE PERSISTENCE
+function saveProgress() {
+  try {
+    localStorage.setItem('nyt_tour_progress', JSON.stringify({
+      tourIdx: currentTourIdx,
+      stop: currentStop
+    }));
+  } catch(e) {}
+}
+
+function restoreProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('nyt_tour_progress'));
+    if (saved && saved.tourIdx < TOURS.length) {
+      currentTourIdx = saved.tourIdx;
+      return saved.stop || 0;
+    }
+  } catch(e) {}
+  return 0;
+}
+
+function init() {
+  const savedStop = restoreProgress();
+  buildTourTabs();
+  renderStops();
+  visited[currentTour().id].add(1);
+  goToStop(savedStop);
+}
+
+// Save progress on every stop change
+const _origGoToStop = goToStop;
+goToStop = function(idx) {
+  _origGoToStop(idx);
+  saveProgress();
+};
+
+init();
+</script>
+</body>
+</html>
